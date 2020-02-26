@@ -218,7 +218,7 @@ void setupFlexSPI2() {
   FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 
   //cmd index 14 = set read parameters
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, 0xc0) | LUT1(CMD_SDR, PINS4, 0x20); //does not work(?)
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, 0xc0) | LUT1(CMD_SDR, PINS4, 0x20);
 
   //cmd index 15 = enter QPI mode
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x38);
@@ -400,7 +400,7 @@ static u8_t spiffs_fds[32 * 4];
 static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
 
 //********************************************************************************************************
-static u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
+static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
 
 static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
   flexspi_ip_read(5, addr, dst, size);
