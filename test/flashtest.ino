@@ -9,6 +9,7 @@
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
 static const uint32_t flashBaseAddr = 0x01000000u;
+
 static char flashID[8];
 
 void setupFlexSPI2() {
@@ -103,8 +104,7 @@ void setupFlexSPI2() {
   FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
 
   // cmd index 0 = exit QPI mode
-  // FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xF5); //RAM
-  FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xFF); //FLASH
+  FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xF5); //RAM
 
   // cmd index 1 = reset enable
   FLEXSPI2_LUT4 = LUT0(CMD_SDR, PINS1, 0x66);
@@ -117,40 +117,44 @@ void setupFlexSPI2() {
   FLEXSPI2_LUT13 = LUT0(READ_SDR, PINS1, 1);
 
   // cmd index 4 = enter QPI mode
-  //FLEXSPI2_LUT16 = LUT0(CMD_SDR, PINS1, 0x35); //RAM
-  FLEXSPI2_LUT16 = LUT0(CMD_SDR, PINS1, 0x38); //Flash
+  FLEXSPI2_LUT16 = LUT0(CMD_SDR, PINS1, 0x35); //RAM
 
   // cmd index 5 = read QPI
   FLEXSPI2_LUT20 = LUT0(CMD_SDR, PINS4, 0xEB) | LUT1(ADDR_SDR, PINS4, 24);
   FLEXSPI2_LUT21 = LUT0(DUMMY_SDR, PINS4, 6) | LUT1(READ_SDR, PINS4, 1);
-  ///Flash:  TODO needed to set read parameters!!
+  ///Flash:  TODO needed to set read parameters?!
 
-  /* TODO Check this
-    // cmd index 6 = write QPI
-    FLEXSPI2_LUT24 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(ADDR_SDR, PINS4, 24);
-    FLEXSPI2_LUT25 = LUT0(WRITE_SDR, PINS4, 1);
-  */
+  // cmd index 6 = write QPI
+  FLEXSPI2_LUT24 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(ADDR_SDR, PINS4, 24);
+  FLEXSPI2_LUT25 = LUT0(WRITE_SDR, PINS4, 1);
+
   // cmd index 7 = read ID bytes SPI
   FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 
 
-
+  //----------------- FLASH ----------------------------------------------
   // cmd index 8 = read Status register #1 SPI
   FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(READ_SDR, PINS1, 1);
   // cmd index 9 = read Status register #2 SPI
   FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x35) | LUT1(READ_SDR, PINS1, 1);
-  // cmd index 10 = read Status register #3 SPI
-  FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x15) | LUT1(READ_SDR, PINS1, 1);
+
+  //cmd index 10 = exit QPI mode
+  FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS4, 0xFF);
 
   //cmd index 11 = write enable QPI
   FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS4, 0x06);
+
   //cmd index 12 = sector erase
   FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS4, 0x20) | LUT1(ADDR_SDR, PINS4, 24);
-  FLEXSPI2_LUT49 = LUT0(WRITE_SDR, PINS4, 1);
+
   //cmd index 13 = page program
   FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS4, 0x02) | LUT1(ADDR_SDR, PINS4, 24);
   FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 
+  //cmd index 14 = set read parameters
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, 0xc0) | LUT1(WRITE_SDR, PINS4, 0x03); //does not work(?)
+  //cmd index 15 = enter QPI mode
+  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x38);
 }
 
 void printStatusRegs() {
@@ -161,25 +165,30 @@ void printStatusRegs() {
   Serial.printf(" %02X", val);
   Serial.printf("\n");
 
+  // cmd index 9 = read Status register #2 SPI
   flexspi_ip_read(9, flashBaseAddr, &val, 1 );
   Serial.print("Status 2:");
   Serial.printf(" %02X", val);
   Serial.printf("\n");
 
-  flexspi_ip_read(10, flashBaseAddr, &val, 1 );
-  Serial.print("Status 3:");
-  Serial.printf(" %02X", val);
-  Serial.printf("\n");
+}
+
+void waitFlash() {
+  uint8_t val;
+  FLEXSPI_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF; // clear rx fifo
+  do { //Wait for busy-bit clear
+    flexspi_ip_read(8, flashBaseAddr, &val, 1 );
+  } while  ((val & 0x01) == 1);
 }
 
 void setupFlexSPI2Flash() {
-  // reset the chip
-  flexspi_ip_command(0, flashBaseAddr);
-  flexspi_ip_command(1, flashBaseAddr);
-  flexspi_ip_command(2, flashBaseAddr);
 
+  // reset the chip
+  flexspi_ip_command(10, flashBaseAddr); //exit QPI
+  flexspi_ip_command(1, flashBaseAddr); //reset enable
+  flexspi_ip_command(2, flashBaseAddr); //reset
   delayMicroseconds(50);
-  // flexspi_ip_command(4, flashBaseAddr);
+
   flexspi_ip_read(7, flashBaseAddr, flashID, sizeof(flashID) ); // flash begins at offset 0x01000000
 #if 1
   Serial.print("ID:");
@@ -188,63 +197,21 @@ void setupFlexSPI2Flash() {
 #endif
 
   printStatusRegs();
-
   //TODO!!!!! set QPI enable bit in status reg #2 if not factory set!!!!!
 
   Serial.println("ENTER QPI MODE");
-  flexspi_ip_command(4, flashBaseAddr);
-  Serial.println("WRITE ENABLE");
-  flexspi_ip_command(11, flashBaseAddr);  //write enable
+  flexspi_ip_command(15, flashBaseAddr);
 
   //patch LUT for QPI:
   // cmd index 8 = read Status register #1
   FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS4, 0x05) | LUT1(READ_SDR, PINS4, 1);
   // cmd index 9 = read Status register #2
   FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(READ_SDR, PINS4, 1);
-  // cmd index 10 = read Status register #3
-  FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS4, 0x15) | LUT1(READ_SDR, PINS4, 1);
 
   printStatusRegs();
 
-  uint8_t dr[128];
-  /*does not work*/
-#if 0
-  Serial.println("Erase Sector 0");
-  flexspi_ip_command(12, flashBaseAddr); //does not work?
+  //flexspi_ip_command(14, flashBaseAddr); // set read parameters
 
-  while (1) { //Wait for busy-bit clear
-    uint8_t val;
-    flexspi_ip_read(8, flashBaseAddr, &val, 1 );
-    if ((val & 0x01) == 0) break;
-  }
-
-  memset(dr, 0, sizeof(dr));
-  flexspi_ip_read(5, flashBaseAddr, dr, 128);
-  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
-  Serial.println();
-
-#endif
-
-
-  Serial.println("Program Page 0");
-  uint8_t data[128];
-  for (int i = 0; i < 128; i++) data[i] = i;
-  flexspi_ip_write(13, flashBaseAddr, data, 128);
-
-  while (1) { //Wait for busy-bit clear
-    uint8_t val;
-    flexspi_ip_read(8, flashBaseAddr, &val, 1 );
-    if ((val & 0x01) == 0) break;
-  }
-
-  Serial.println("Ready");
-
-
-  //uint8_t dr[128];
-  memset(dr, 0, sizeof(dr));
-  flexspi_ip_read(5, flashBaseAddr, dr, 128);
-  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
-  Serial.println();
 }
 
 void setup() {
@@ -252,11 +219,33 @@ void setup() {
   while (!Serial);
   setupFlexSPI2Flash();
 
-  //Todo ..................
-  //erase sector (4k) (+check busy flag)
-  //testwrite page (cmd 02) (+check busy flag)
-  //read page
-  //read page by memory access
+  uint8_t dr[128];
+  /*does not work*/
+
+  Serial.println("Erase Sector 0");
+  Serial.println("WRITE ENABLE");
+  flexspi_ip_command(11, flashBaseAddr);  //write enable
+  flexspi_ip_command(12, flashBaseAddr);
+  waitFlash();
+  memset(dr, 0, sizeof(dr));
+  flexspi_ip_read(5, flashBaseAddr, dr, 128);
+  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
+  Serial.println();
+
+  Serial.println("Program Page 0");
+  Serial.println("WRITE ENABLE");
+  flexspi_ip_command(11, flashBaseAddr);  //write enable
+  uint8_t data[128];
+  for (int i = 0; i < 128; i++) data[i] = i;
+  flexspi_ip_write(13, flashBaseAddr, data, 128);
+  waitFlash();
+
+  Serial.println("Read:");
+  memset(dr, 0, sizeof(dr));
+  flexspi_ip_read(5, flashBaseAddr, dr, 128);
+  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
+  Serial.println();
+  Serial.println("OK");
 
 }
 
