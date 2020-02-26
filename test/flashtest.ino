@@ -1,3 +1,69 @@
+/*
+   This test uses the optional quad spi flash on Teensy 4.1
+
+   ATTENTION: Flash needs to be empty before first use of SPIFFS
+
+
+   Frank B, 2020
+*/
+
+
+#include <spiffs.h>
+
+static spiffs fs; //filesystem
+
+char buf[512] = "Hello World! What a wonderful World :)";
+int szLen = strlen( buf );
+
+void test_spiffs_write() {
+  // Surely, I've mounted spiffs before entering here
+  spiffs_file fd = SPIFFS_open(&fs, "my_file", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  SPIFFS_close(&fs, fd);
+  SPIFFS_fflush(&fs, fd);
+}
+
+static void test_spiffs_read() {
+  // Surely, I've mounted spiffs before entering here
+  spiffs_file  fd = SPIFFS_open(&fs, "my_file", SPIFFS_RDWR, 0);
+  if (SPIFFS_read(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  SPIFFS_close(&fs, fd);
+}
+
+
+void setup() {
+  while (!Serial);
+
+#if 0
+  eraseFlashChip();
+#endif
+
+  Serial.println("Mount SPIFFS:");
+  my_spiffs_mount();
+
+#if 1
+  Serial.println("Write file:");
+  Serial.println(buf);
+  test_spiffs_write();
+#endif
+
+  memset(buf, 0, sizeof(buf)); //emtpy buffer
+
+  Serial.println("Read file:");
+  test_spiffs_read();
+  Serial.println(buf);
+}
+
+void loop() {
+}
+
+//********************************************************************************************************
+//********************************************************************************************************
+//********************************************************************************************************
+/*
+   QSPI Flash Interface
+*/
+
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)
 #define CMD_SDR         FLEXSPI_LUT_OPCODE_CMD_SDR
@@ -9,7 +75,6 @@
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
 static const uint32_t flashBaseAddr = 0x01000000u;
-
 static char flashID[8];
 
 void setupFlexSPI2() {
@@ -104,13 +169,13 @@ void setupFlexSPI2() {
   FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
 
   // cmd index 0 = exit QPI mode
-  FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xF5); //RAM
+  FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xF5); // RAM
 
   // cmd index 1 = reset enable
-  FLEXSPI2_LUT4 = LUT0(CMD_SDR, PINS1, 0x66);
+  FLEXSPI2_LUT4 = LUT0(CMD_SDR, PINS1, 0x66); // RAM, FLASH
 
   // cmd index 2 = reset
-  FLEXSPI2_LUT8 = LUT0(CMD_SDR, PINS1, 0x99);
+  FLEXSPI2_LUT8 = LUT0(CMD_SDR, PINS1, 0x99); // RAM, FLASH
 
   // cmd index 3 = read ID bytes
   FLEXSPI2_LUT12 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(DUMMY_SDR, PINS1, 24);
@@ -121,20 +186,21 @@ void setupFlexSPI2() {
 
   // cmd index 5 = read QPI
   FLEXSPI2_LUT20 = LUT0(CMD_SDR, PINS4, 0xEB) | LUT1(ADDR_SDR, PINS4, 24);
-  FLEXSPI2_LUT21 = LUT0(DUMMY_SDR, PINS4, 6) | LUT1(READ_SDR, PINS4, 1);
-  ///Flash:  TODO needed to set read parameters?!
+  FLEXSPI2_LUT21 = LUT0(DUMMY_SDR, PINS4, 6) | LUT1(READ_SDR, PINS4, 1); //RAM, FLASH
 
   // cmd index 6 = write QPI
   FLEXSPI2_LUT24 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(ADDR_SDR, PINS4, 24);
-  FLEXSPI2_LUT25 = LUT0(WRITE_SDR, PINS4, 1);
+  FLEXSPI2_LUT25 = LUT0(WRITE_SDR, PINS4, 1); // RAM
 
   // cmd index 7 = read ID bytes SPI
-  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
+  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1); //RAM, FLASH
 
 
-  //----------------- FLASH ----------------------------------------------
+  // ----------------- FLASH only ----------------------------------------------
+
   // cmd index 8 = read Status register #1 SPI
   FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(READ_SDR, PINS1, 1);
+
   // cmd index 9 = read Status register #2 SPI
   FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x35) | LUT1(READ_SDR, PINS1, 1);
 
@@ -152,12 +218,14 @@ void setupFlexSPI2() {
   FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 
   //cmd index 14 = set read parameters
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, 0xc0) | LUT1(WRITE_SDR, PINS4, 0x03); //does not work(?)
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, 0xc0) | LUT1(CMD_SDR, PINS4, 0x20); //does not work(?)
+
   //cmd index 15 = enter QPI mode
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x38);
 }
 
 void printStatusRegs() {
+#if 0
   uint8_t val;
 
   flexspi_ip_read(8, flashBaseAddr, &val, 1 );
@@ -170,14 +238,17 @@ void printStatusRegs() {
   Serial.print("Status 2:");
   Serial.printf(" %02X", val);
   Serial.printf("\n");
-
+#endif
 }
 
-void waitFlash() {
+void waitFlash(boolean visual = false) {
   uint8_t val;
   FLEXSPI_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF; // clear rx fifo
   do { //Wait for busy-bit clear
     flexspi_ip_read(8, flashBaseAddr, &val, 1 );
+    if (visual) {
+      Serial.print("."); delay(500);
+    }
   } while  ((val & 0x01) == 1);
 }
 
@@ -190,7 +261,8 @@ void setupFlexSPI2Flash() {
   delayMicroseconds(50);
 
   flexspi_ip_read(7, flashBaseAddr, flashID, sizeof(flashID) ); // flash begins at offset 0x01000000
-#if 1
+
+#if 0
   Serial.print("ID:");
   for (unsigned i = 0; i < sizeof(flashID); i++) Serial.printf(" %02X", flashID[i]);
   Serial.printf("\n");
@@ -199,7 +271,7 @@ void setupFlexSPI2Flash() {
   printStatusRegs();
   //TODO!!!!! set QPI enable bit in status reg #2 if not factory set!!!!!
 
-  Serial.println("ENTER QPI MODE");
+  //  Serial.println("ENTER QPI MODE");
   flexspi_ip_command(15, flashBaseAddr);
 
   //patch LUT for QPI:
@@ -208,73 +280,10 @@ void setupFlexSPI2Flash() {
   // cmd index 9 = read Status register #2
   FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(READ_SDR, PINS4, 1);
 
+  flexspi_ip_command(14, flashBaseAddr);
+
   printStatusRegs();
 
-  //flexspi_ip_command(14, flashBaseAddr); // set read parameters
-
-}
-
-void setup() {
-  setupFlexSPI2();
-  while (!Serial);
-  setupFlexSPI2Flash();
-
-  uint8_t dr[128];
-  /*does not work*/
-
-  Serial.println("Erase Sector 0");
-  Serial.println("WRITE ENABLE");
-  flexspi_ip_command(11, flashBaseAddr);  //write enable
-  flexspi_ip_command(12, flashBaseAddr);
-  waitFlash();
-  memset(dr, 0, sizeof(dr));
-  flexspi_ip_read(5, flashBaseAddr, dr, 128);
-  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
-  Serial.println();
-
-  Serial.println("Program Page 0");
-  Serial.println("WRITE ENABLE");
-  flexspi_ip_command(11, flashBaseAddr);  //write enable
-  uint8_t data[128];
-  for (int i = 0; i < 128; i++) data[i] = i;
-  flexspi_ip_write(13, flashBaseAddr, data, 128);
-  waitFlash();
-
-  Serial.println("Read:");
-  memset(dr, 0, sizeof(dr));
-  flexspi_ip_read(5, flashBaseAddr, dr, 128);
-  for (int i = 0; i < 128; i++) Serial.print(dr[i], HEX);
-  Serial.println();
-  Serial.println("OK");
-
-}
-
-void loop() {
-
-
-}
-
-void readmem(uint32_t addr, void *data, uint32_t length)
-{
-  uint8_t *p = (uint8_t *)(0x70000000 + addr);
-  arm_dcache_flush(p, length);
-  memset(data, 0xFF, length);
-  flexspi_ip_read(5, addr, data, length);
-  Serial.printf("read @%06X: ", addr);
-  for (uint32_t i = 0; i < length; i++) Serial.printf(" %02X", *(((uint8_t *)data) + i));
-  Serial.printf("\n");
-  arm_dcache_delete(p, length);
-  Serial.printf("rd @%08X: ", (uint32_t)p);
-  for (uint32_t i = 0; i < length; i++) Serial.printf(" %02X", p[i]);
-  Serial.printf("\n");
-}
-
-void writemem(uint32_t addr, const void *data, uint32_t length)
-{
-  Serial.printf("write @%06X:", addr);
-  for (uint32_t i = 0; i < length; i++) Serial.printf(" %02X", *(((uint8_t *)data) + i));
-  Serial.printf("\n");
-  flexspi_ip_write(6, addr, data, length);
 }
 
 void flexspi_ip_command(uint32_t index, uint32_t addr)
@@ -359,4 +368,90 @@ static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, ui
     Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
   }
   FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+}
+
+void eraseFlashChip() {
+  setupFlexSPI2();
+  setupFlexSPI2Flash();
+  flexspi_ip_command(11, flashBaseAddr);
+  delay(10);
+
+  Serial.println("Erasing.... (may take some time)");
+  uint32_t t = millis();
+  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase
+  flexspi_ip_command(15, flashBaseAddr);
+  waitFlash(true);
+  asm("":::"memory");
+  t = millis() - t;
+  Serial.printf("Chip erased in %d seconds.\n", t / 1000);
+}
+
+//********************************************************************************************************
+//********************************************************************************************************
+//********************************************************************************************************
+/*
+   SPIFFS interface
+*/
+
+#define LOG_PAGE_SIZE       256
+
+static u8_t spiffs_work_buf[LOG_PAGE_SIZE * 2];
+static u8_t spiffs_fds[32 * 4];
+static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
+
+//********************************************************************************************************
+static u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
+
+static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
+  flexspi_ip_read(5, addr, dst, size);
+  return SPIFFS_OK;
+}
+
+static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
+  flexspi_ip_command(11, flashBaseAddr);  //write enable
+  flexspi_ip_write(13, addr, src, size);
+  waitFlash(); //TODO: Can we wait at the beginning instead?
+  return SPIFFS_OK;
+}
+
+static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
+  flexspi_ip_command(11, flashBaseAddr);  //write enable
+  int s = size;
+  while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
+    flexspi_ip_command(12, addr);
+    addr += blocksize;
+    s -= blocksize;
+    waitFlash(); //TODO: Can we wait at the beginning intead?
+  }
+  return SPIFFS_OK;
+}
+
+//********************************************************************************************************
+
+void my_spiffs_mount() {
+
+  setupFlexSPI2();
+  setupFlexSPI2Flash();
+
+  spiffs_config cfg;
+
+  cfg.phys_size = 1024 * 1024 * 16; // use 16 MB flash TODO use ID to get capacity
+  cfg.phys_addr = /* 0x70000000 + */flashBaseAddr; // start spiffs here (physical adress)
+  cfg.phys_erase_block = blocksize; //4K sectors
+  cfg.log_block_size = cfg.phys_erase_block; // let us not complicate things
+  cfg.log_page_size = LOG_PAGE_SIZE; // as we said
+
+  cfg.hal_read_f = my_spiffs_read;
+  cfg.hal_write_f = my_spiffs_write;
+  cfg.hal_erase_f = my_spiffs_erase;
+
+  int res = SPIFFS_mount(&fs,
+                         &cfg,
+                         spiffs_work_buf,
+                         spiffs_fds,
+                         sizeof(spiffs_fds),
+                         spiffs_cache_buf,
+                         sizeof(spiffs_cache_buf),
+                         0);
+  Serial.printf("mount res: %i\n", res);
 }
