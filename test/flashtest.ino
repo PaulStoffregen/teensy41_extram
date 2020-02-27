@@ -52,6 +52,8 @@ void setup() {
   Serial.println("Read file:");
   test_spiffs_read();
   Serial.println(buf);
+
+
 }
 
 void loop() {
@@ -74,7 +76,11 @@ void loop() {
 #define PINS1           FLEXSPI_LUT_NUM_PADS_1
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
+#define FLASH_MEMMAP 1 //Use memory-mapped access
+
+static const void* extBase = (void*)0x70000000u;
 static const uint32_t flashBaseAddr = 0x01000000u;
+static uint32_t flashCapacity = 16u * 1024u *1024u;
 static char flashID[8];
 
 void setupFlexSPI2() {
@@ -380,6 +386,9 @@ void eraseFlashChip() {
   uint32_t t = millis();
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase
   flexspi_ip_command(15, flashBaseAddr);
+#ifdef FLASH_MEMMAP  
+  arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr), flashCapacity);
+#endif  
   waitFlash(true);
   asm("":::"memory");
   t = millis() - t;
@@ -403,13 +412,23 @@ static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
 static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
 
 static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
+  uint8_t *p;
+  p = (uint8_t *)0x70000000;
+  p += addr;
+#ifdef FLASH_MEMMAP   
+  memcpy(dst, p, size);
+#else  
   flexspi_ip_read(5, addr, dst, size);
+#endif  
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
   flexspi_ip_command(11, flashBaseAddr);  //write enable
   flexspi_ip_write(13, addr, src, size);
+#ifdef FLASH_MEMMAP   
+  arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
+#endif  
   waitFlash(); //TODO: Can we wait at the beginning instead?
   return SPIFFS_OK;
 }
@@ -419,6 +438,9 @@ static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
     flexspi_ip_command(12, addr);
+#ifdef FLASH_MEMMAP     
+    arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
+#endif    
     addr += blocksize;
     s -= blocksize;
     waitFlash(); //TODO: Can we wait at the beginning intead?
