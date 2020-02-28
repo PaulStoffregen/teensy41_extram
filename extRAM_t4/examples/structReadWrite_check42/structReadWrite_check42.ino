@@ -38,7 +38,7 @@ void setup() {
 
   Serial.println("Starting...");
     
-  mymemory.begin();
+  mymemory.eramBegin();
 
   //.........................
 //---------init data - load array

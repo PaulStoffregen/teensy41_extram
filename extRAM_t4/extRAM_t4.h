@@ -44,8 +44,6 @@
 // The density codes gives the memory's adressing scheme
 
 
-
-
 // Error management
 #define ERROR_0 0 // Success    
 #define ERROR_1 1 // Data too long to fit the transmission buffer on Arduino
@@ -60,12 +58,16 @@
 #define ERROR_10 10 // Not permitted opération
 #define ERROR_11 11 // Memory address out of range
 
+	static const uint32_t flashBaseAddr = 0x01000000u;
+	static char flashID[8];
+	
+
 
 class extRAM_t4 {
  public:
 	extRAM_t4();
-	
-	int8_t	begin(void);
+	int8_t  flashBegin(void);
+	int8_t	eramBegin(void);
 	byte	readBit(uint32_t ramAddr, uint8_t bitNb, byte *bit);
 	byte	setOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
@@ -85,13 +87,20 @@ class extRAM_t4 {
 	void	writeLong(uint32_t ramAddr, uint32_t value);
 
 	void	eraseDevice(void);
-  
- private:
+	
+	void setupFLASH1();
+	void setupFlash2();
+	void printStatusRegs();
+	
 	void readmem(uint32_t addr, void *data, uint32_t length);
 	void writemem(uint32_t addr, const void *data, uint32_t length);
 	void flexspi_ip_command(uint32_t index, uint32_t addr);
 	void flexspi_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length);
 	static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length);
+	
+
+ private:
+
 
 };
 
