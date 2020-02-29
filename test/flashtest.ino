@@ -445,19 +445,19 @@ static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
   flexspi_ip_command(11, flashBaseAddr);  //write enable
   flexspi_ip_write(13, addr, src, size);
 #ifdef FLASH_MEMMAP
-  arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
+  arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
   waitFlash(); //TODO: Can we wait at the beginning instead?
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
-  flexspi_ip_command(11, flashBaseAddr);  //write enable
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
+    flexspi_ip_command(11, flashBaseAddr);  //write enable
     flexspi_ip_command(12, addr);
 #ifdef FLASH_MEMMAP
-    arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
+    arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
     addr += blocksize;
     s -= blocksize;
