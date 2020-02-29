@@ -1,6 +1,8 @@
 /*
    This test uses the optional quad spi flash on Teensy 4.1
-
+   https://github.com/pellepl/spiffs/wiki/Using-spiffs
+   https://github.com/pellepl/spiffs/wiki/FAQ
+   
    ATTENTION: Flash needs to be empty before first use of SPIFFS
 
 
@@ -30,6 +32,17 @@ static void test_spiffs_read() {
   SPIFFS_close(&fs, fd);
 }
 
+static void test_spiffs_listDir() {
+  spiffs_DIR d;
+  struct spiffs_dirent e;
+  struct spiffs_dirent *pe = &e;
+
+  SPIFFS_opendir(&fs, "/", &d);
+  while ((pe = SPIFFS_readdir(&d, pe))) {
+    Serial.printf("%s [%04x] size:%i\n", pe->name, pe->obj_id, pe->size);
+  }
+  SPIFFS_closedir(&d);
+}
 
 void setup() {
   while (!Serial);
@@ -47,12 +60,13 @@ void setup() {
   test_spiffs_write();
 #endif
 
-  memset(buf, 0, sizeof(buf)); //emtpy buffer
+  Serial.println("Directoy contents:");
+  test_spiffs_listDir();
 
+  memset(buf, 0, sizeof(buf)); //emtpy buffer
   Serial.println("Read file:");
   test_spiffs_read();
   Serial.println(buf);
-
 
 }
 
@@ -80,7 +94,7 @@ void loop() {
 
 static const void* extBase = (void*)0x70000000u;
 static const uint32_t flashBaseAddr = 0x01000000u;
-static uint32_t flashCapacity = 16u * 1024u *1024u;
+static uint32_t flashCapacity = 16u * 1024u * 1024u;
 static char flashID[8];
 
 void setupFlexSPI2() {
@@ -247,15 +261,19 @@ void printStatusRegs() {
 #endif
 }
 
-void waitFlash(boolean visual = false) {
+/*
+   Waits for busy bit = 0 (statusregister #1 )
+   Timeout is optional
+*/
+bool waitFlash(uint32_t timeout = 0) {
   uint8_t val;
+  uint32_t t = millis();
   FLEXSPI_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF; // clear rx fifo
-  do { //Wait for busy-bit clear
+  do {
     flexspi_ip_read(8, flashBaseAddr, &val, 1 );
-    if (visual) {
-      Serial.print("."); delay(500);
-    }
+    if (timeout && (millis() - t > timeout)) return 1;
   } while  ((val & 0x01) == 1);
+  return 0;
 }
 
 void setupFlexSPI2Flash() {
@@ -266,7 +284,7 @@ void setupFlexSPI2Flash() {
   flexspi_ip_command(2, flashBaseAddr); //reset
   delayMicroseconds(50);
 
-  flexspi_ip_read(7, flashBaseAddr, flashID, sizeof(flashID) ); // flash begins at offset 0x01000000
+  flexspi_ip_read(7, flashBaseAddr, flashID, sizeof(flashID) );
 
 #if 0
   Serial.print("ID:");
@@ -380,19 +398,19 @@ void eraseFlashChip() {
   setupFlexSPI2();
   setupFlexSPI2Flash();
   flexspi_ip_command(11, flashBaseAddr);
-  delay(10);
 
-  Serial.println("Erasing.... (may take some time)");
+  Serial.println("Erasing... (may take some time)");
   uint32_t t = millis();
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase
   flexspi_ip_command(15, flashBaseAddr);
-#ifdef FLASH_MEMMAP  
+#ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr), flashCapacity);
-#endif  
-  waitFlash(true);
-  asm("":::"memory");
+#endif
+  while (waitFlash(500)) {
+    Serial.print(".");
+  }
   t = millis() - t;
-  Serial.printf("Chip erased in %d seconds.\n", t / 1000);
+  Serial.printf("\nChip erased in %d seconds.\n", t / 1000);
 }
 
 //********************************************************************************************************
@@ -413,22 +431,22 @@ static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands
 
 static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
   uint8_t *p;
-  p = (uint8_t *)0x70000000;
+  p = (uint8_t *)extBase;
   p += addr;
-#ifdef FLASH_MEMMAP   
+#ifdef FLASH_MEMMAP
   memcpy(dst, p, size);
-#else  
+#else
   flexspi_ip_read(5, addr, dst, size);
-#endif  
+#endif
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
   flexspi_ip_command(11, flashBaseAddr);  //write enable
   flexspi_ip_write(13, addr, src, size);
-#ifdef FLASH_MEMMAP   
+#ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
-#endif  
+#endif
   waitFlash(); //TODO: Can we wait at the beginning instead?
   return SPIFFS_OK;
 }
@@ -438,9 +456,9 @@ static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
     flexspi_ip_command(12, addr);
-#ifdef FLASH_MEMMAP     
+#ifdef FLASH_MEMMAP
     arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr + addr), size);
-#endif    
+#endif
     addr += blocksize;
     s -= blocksize;
     waitFlash(); //TODO: Can we wait at the beginning intead?
@@ -457,7 +475,7 @@ void my_spiffs_mount() {
 
   spiffs_config cfg;
 
-  cfg.phys_size = 1024 * 1024 * 16; // use 16 MB flash TODO use ID to get capacity
+  cfg.phys_size = flashCapacity; // use 16 MB flash TODO use ID to get capacity
   cfg.phys_addr = /* 0x70000000 + */flashBaseAddr; // start spiffs here (physical adress)
   cfg.phys_erase_block = blocksize; //4K sectors
   cfg.log_block_size = cfg.phys_erase_block; // let us not complicate things
