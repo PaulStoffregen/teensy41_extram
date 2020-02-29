@@ -813,21 +813,29 @@ static void extRAM_t4::flexspi_ip_write(uint32_t index, uint32_t addr, const voi
   FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
   src = (const uint8_t *)data;
   FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+  
   while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
+
     if (n & FLEXSPI_INTR_IPTXWE) {
       wrlen = length;
       if (wrlen > 8) wrlen = 8;
       if (wrlen > 0) {
-        //Serial.print("%");
-        memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen);
-        src += wrlen;
+  
+        //memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen); !crashes sometimes!
+        uint8_t *p = (uint8_t *) &FLEXSPI2_TFDR0;
+        for (unsigned i = 0; i < wrlen; i++) *p++ = *src++;
+  
+        //src += wrlen;
         length -= wrlen;
         FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
       }
     }
+    
   }
+  
   if (n & FLEXSPI_INTR_IPCMDERR) {
     Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
   }
+  
   FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
 }
