@@ -2,7 +2,7 @@
    This test uses the optional quad spi flash on Teensy 4.1
    https://github.com/pellepl/spiffs/wiki/Using-spiffs
    https://github.com/pellepl/spiffs/wiki/FAQ
-   
+
    ATTENTION: Flash needs to be empty before first use of SPIFFS
 
 
@@ -22,9 +22,9 @@ int szLen = strlen( buf );
 
 //random address to write from
 uint16_t writeaddress = 0x00;
-  uint8_t valERAM;
-  uint8_t *ptrERAM = (uint8_t *)0x70000000;  // Set to ERAM
-  const uint32_t  sizeofERAM = 0x7FFFFE / sizeof( valERAM ); // sizeof free RAM in
+uint8_t valERAM;
+uint8_t *ptrERAM = (uint8_t *)0x70000000;  // Set to ERAM
+const uint32_t  sizeofERAM = 0x7FFFFE / sizeof( valERAM ); // sizeof free RAM in
 
 void test_spiffs_write() {
   // Surely, I've mounted spiffs before entering here
@@ -66,10 +66,25 @@ static void test_spiffs_listDir() {
 
 void setup() {
   while (!Serial);
-
+  Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 #if 1
   flashRAM.flashBegin();
-  eraseFlashChip();
+  Serial.println("\n Enter 'y' in 6 seconds to format FlashChip - other to skip");
+  uint32_t pauseS = millis();
+  char chIn = 9;
+  while ( pauseS + 6000 > millis() && 9 == chIn ) {
+    if ( Serial.available() ) {
+      do {
+        if ( chIn != 'y' )
+          chIn = Serial.read();
+        else
+          Serial.read();
+      }
+      while ( Serial.available() );
+    }
+  }
+  if ( chIn == 'y' )
+    eraseFlashChip();
 #endif
 
   Serial.println();
@@ -96,7 +111,7 @@ void setup() {
   eRAM.eramBegin();
   delay(100);
   check42();
-  
+
   Serial.println();
   Serial.println("Mount SPIFFS:");
   flashRAM.flashBegin();
@@ -182,7 +197,7 @@ static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
 //********************************************************************************************************
 static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
 
-static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
+static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t * dst) {
   uint8_t *p;
   p = (uint8_t *)extBase;
   p += addr;
@@ -194,7 +209,7 @@ static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
   return SPIFFS_OK;
 }
 
-static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
+static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t * src) {
   flashRAM.flexspi_ip_command(11, flashBaseAddr);  //write enable
   flashRAM.flexspi_ip_write(13, addr, src, size);
 #ifdef FLASH_MEMMAP
@@ -246,7 +261,7 @@ void my_spiffs_mount() {
                          spiffs_cache_buf,
                          sizeof(spiffs_cache_buf),
                          0);
-  Serial.printf("mount res: %i\n", res);
+  Serial.printf("Mount ADDR 0x%X with res: %i\n", cfg.phys_addr, res);
 }
 
 elapsedMicros my_us;
@@ -278,7 +293,10 @@ void check42() {
     else kk++;
   }
   Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
-  Serial.printf( "Failed to find 42 in ERAM %d Times", jj );
+  if ( 0 == jj )
+    Serial.printf( "Good, " );
+  else
+    Serial.printf( "Failed to find 42 in ERAM %d Times", jj );
   errCnt += jj;
   Serial.printf( "\tFound 42 in ERAM 0x%X Times\n", sizeofERAM - jj );
 }
