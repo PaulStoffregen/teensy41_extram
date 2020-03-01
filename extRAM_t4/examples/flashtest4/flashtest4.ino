@@ -86,7 +86,7 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    eRAM.eramBegin();
+    flashRAM.flashBegin();
     eraseFlashChip();
   }
 #endif
