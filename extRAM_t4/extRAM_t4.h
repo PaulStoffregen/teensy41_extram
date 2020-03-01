@@ -59,6 +59,7 @@
 #define ERROR_11 11 // Memory address out of range
 
 	static const uint32_t flashBaseAddr = 0x01000000u;
+	static const uint32_t eramBaseAddr = 0x07000000u;
 	static char flashID[8];
 	
 

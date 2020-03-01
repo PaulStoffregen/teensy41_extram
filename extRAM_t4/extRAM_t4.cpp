@@ -37,7 +37,7 @@ extRAM_t4::extRAM_t4()
 /*========================================================================*/
 int8_t extRAM_t4::flashBegin() {
 	setupFLASH1();
-	setupFlash2();	
+	setupFlash2();
 }
 
 
@@ -184,12 +184,13 @@ int8_t extRAM_t4::eramBegin() {
 	  // read chip ID
 	  uint8_t id[8];
 	  flexspi_ip_read(3, 0, id, 8);
-	  Serial.print("ID:");
+	  Serial.print("ERAM ID:");
 	  for (int i=0; i < 8; i++) {
 		Serial.printf(" %02X", id[i]);
 	  }
 	  Serial.printf("\n");
 	  // ID: 0D 5D 50 B1 BF EE C2 49
+	  Serial.printf("at 0x %x\n",  eramBaseAddr); 
 
 	  if (id[0] != 0x0D || id[1] != 0x5D) {
 		Serial.println("Wrong ID  :-(");
@@ -363,10 +364,11 @@ void extRAM_t4::setupFlash2() {
 
   flexspi_ip_read(7, flashBaseAddr, flashID, sizeof(flashID) ); // flash begins at offset 0x01000000
 
-#if 0
-  Serial.print("ID:");
+#if 1
+  Serial.print("FLASH ID:");
   for (unsigned i = 0; i < sizeof(flashID); i++) Serial.printf(" %02X", flashID[i]);
   Serial.printf("\n");
+  Serial.printf("at 0x %x\n", flashBaseAddr);
 #endif
 
   printStatusRegs();
@@ -691,7 +693,7 @@ void extRAM_t4::writeLong(uint32_t ramAddr, uint32_t value)
 */
 /**************************************************************************/
 void extRAM_t4::eraseDevice(void) {
-	/*
+/*
 		byte result = 0;
 		uint16_t i = 0;
 		
@@ -721,7 +723,7 @@ void extRAM_t4::eraseDevice(void) {
 			}
 		#endif
 		return result;
-		*/
+*/
 }
 
 
