@@ -13,7 +13,7 @@
 #include <spiffs.h>
 #include <extRAM_t4.h>
 extRAM_t4 eRAM;
-extRAM_t4 flashRAM;
+uint8_t config = 2; //0 - init eram only, 1-init flash only, 2-init both
 
 static spiffs fs; //filesystem
 
@@ -29,17 +29,6 @@ const uint32_t  sizeofERAM = 0x7FFFFE / sizeof( valERAM ); // sizeof free RAM in
 void test_spiffs_write() {
   // Surely, I've mounted spiffs before entering here
   spiffs_file fd = SPIFFS_open(&fs, "my_file", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   if (SPIFFS_write(&fs, fd, (u8_t *)buf, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
@@ -67,9 +56,9 @@ static void test_spiffs_listDir() {
 void setup() {
   while (!Serial);
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
-  //flashRAM.flashBegin();
+  //eRAM.flashBegin();
 //  eRAM.eramBegin();
-  loopTest();  //BUGBUG DEBUG
+  //loopTest();  //BUGBUG DEBUG
 #if 1
   Serial.println("\n Enter 'y' in 6 seconds to format FlashChip - other to skip");
   uint32_t pauseS = millis();
@@ -86,14 +75,14 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    flashRAM.flashBegin();
+    eRAM.begin(config);
     eraseFlashChip();
   }
 #endif
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  flashRAM.flashBegin();
+  eRAM.begin(config);
   my_spiffs_mount();
 
 #if 1
@@ -112,13 +101,12 @@ void setup() {
   Serial.println(buf);
 
   Serial.println();
-  eRAM.eramBegin();
+  //eRAM.eramBegin();
   delay(100);
   check42();
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  flashRAM.flashBegin();
   my_spiffs_mount();
   Serial.println("Directory contents:");
   test_spiffs_listDir();
@@ -136,9 +124,65 @@ void loop() {
     while ( Serial.available() );
   }
   if ( chIn == 'y' ) {
+    loopTest2();
+
+    Serial.println("Loop Test");
     loopTest();
+    
   }
 }
+
+void loopTest2(){
+  int szLen;
+  char xData[12048], xData1[12048], xData2[26];
+
+  spiffs_file fd = SPIFFS_open(&fs, "loopTest2", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+
+  for ( int ii = 0; ii < 100; ii++) {
+    for ( int jj = 0; jj < 26; jj++) {
+      if ( ii % 2 )
+        xData[jj] = 'A' + jj;
+      else
+        xData[jj] = 'a' + jj;
+    }
+    if (SPIFFS_write(&fs, fd, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  }
+  SPIFFS_close(&fs, fd);
+  SPIFFS_fflush(&fs, fd);
+
+  Serial.println("Directory contents:");
+  test_spiffs_listDir();
+
+  spiffs_file  fd1 = SPIFFS_open(&fs, "loopTest2", SPIFFS_RDWR, 0);
+  if (SPIFFS_read(&fs, fd1, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  SPIFFS_close(&fs, fd);
+
+  for ( int ii = 0; ii < 100; ii++) {
+    for ( int jj = 0; jj < 26; jj++) {
+      if ( ii % 2 )
+        xData[jj] = 'A' + jj;
+      else
+        xData[jj] = 'a' + jj;
+    }
+    eRAM.writeArrayDMA(ii*26, 26, xData);
+  }
+
+  Serial.println();
+  for ( int ii = 0; ii < 100; ii++) {
+    eRAM.readArrayDMA(ii*26, 26, xData2);
+    for ( int jj = 0; jj < 26; jj++) {
+      Serial.print( xData2[jj]);
+    }
+    Serial.println("  <<< eRAM");
+    for ( int jj = 0; jj < 26; jj++) {
+      Serial.print( xData1[jj+(ii*26)]);
+    }
+    Serial.println("  <<< FLASH");
+  }
+}
+
+
+
 void loopTest() {
   char * erName = (char *)0x70007000;
   char * erData = (char *)0x70007200;
@@ -233,7 +277,7 @@ bool waitFlash(uint32_t timeout = 0) {
   uint32_t t = millis();
   FLEXSPI_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF; // clear rx fifo
   do {
-    flashRAM.flexspi_ip_read(8, flashBaseAddr, &val, 1 );
+    eRAM.flexspi_ip_read(8, flashBaseAddr, &val, 1 );
     if (timeout && (millis() - t > timeout)) return 1;
   } while  ((val & 0x01) == 1);
   return 0;
@@ -243,12 +287,12 @@ bool waitFlash(uint32_t timeout = 0) {
 void eraseFlashChip() {
   //setupFlexSPI2();
   //setupFlexSPI2Flash();
-  flashRAM.flexspi_ip_command(11, flashBaseAddr);
+  eRAM.flexspi_ip_command(11, flashBaseAddr);
 
   Serial.println("Erasing... (may take some time)");
   uint32_t t = millis();
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase
-  flashRAM.flexspi_ip_command(15, flashBaseAddr);
+  eRAM.flexspi_ip_command(15, flashBaseAddr);
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr), flashCapacity);
 #endif
@@ -282,14 +326,14 @@ static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t * dst) {
 #ifdef FLASH_MEMMAP
   memcpy(dst, p, size);
 #else
-  flashRAM.flexspi_ip_read(5, addr, dst, size);
+  eRAM.flexspi_ip_read(5, addr, dst, size);
 #endif
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t * src) {
-  flashRAM.flexspi_ip_command(11, flashBaseAddr);  //write enable
-  flashRAM.flexspi_ip_write(13, addr, src, size);
+  eRAM.flexspi_ip_command(11, flashBaseAddr);  //write enable
+  eRAM.flexspi_ip_write(13, addr, src, size);
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
@@ -300,8 +344,8 @@ static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t * src) {
 static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
-    flashRAM.flexspi_ip_command(11, flashBaseAddr);  //write enable
-    flashRAM.flexspi_ip_command(12, addr);
+    eRAM.flexspi_ip_command(11, flashBaseAddr);  //write enable
+    eRAM.flexspi_ip_command(12, addr);
 #ifdef FLASH_MEMMAP
     arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
