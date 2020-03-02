@@ -443,7 +443,7 @@ static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
 static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
 
 static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
-  waitFlash();
+
 #ifdef FLASH_MEMMAP
   memcpy(dst, (uint8_t *)extBase + addr, size);
 #else
@@ -453,23 +453,21 @@ static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
 }
 
 static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
-  waitFlash();
-  flexspi_ip_command(11, flashBaseAddr);  //write enable
-  flexspi_ip_write(13, addr, src, size);
+  flexspi_ip_command(11, flashBaseAddr); // write enable
+  flexspi_ip_write(13, addr, src, size); // write
 
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
-
+  waitFlash();
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
-    waitFlash();
     flexspi_ip_command(11, flashBaseAddr);  //write enable
-    flexspi_ip_command(12, addr); //write
+    flexspi_ip_command(12, addr);
 
 #ifdef FLASH_MEMMAP
     arm_dcache_delete((void*)((uint32_t)extBase + addr), blocksize);
@@ -477,7 +475,7 @@ static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
 
     addr += blocksize;
     s -= blocksize;
-    waitFlash(); //TODO: Can we wait at the beginning intead?
+    waitFlash();
   }
   return SPIFFS_OK;
 }
