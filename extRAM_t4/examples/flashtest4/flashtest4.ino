@@ -19,6 +19,7 @@ static spiffs fs; //filesystem
 
 char buf[512] = "Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :)  Hello World! What a wonderful World :) Hello World! What a wonderful World :)";
 int szLen = strlen( buf );
+elapsedMicros my_us;
 
 //random address to write from
 uint16_t writeaddress = 0x00;
@@ -56,9 +57,6 @@ static void test_spiffs_listDir() {
 void setup() {
   while (!Serial);
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
-  //eRAM.flashBegin();
-//  eRAM.eramBegin();
-  //loopTest();  //BUGBUG DEBUG
 #if 1
   Serial.println("\n Enter 'y' in 6 seconds to format FlashChip - other to skip");
   uint32_t pauseS = millis();
@@ -92,7 +90,7 @@ void setup() {
 #endif
 
   Serial.println();
-  Serial.println("Directoy contents:");
+  Serial.println("Directory contents:");
   test_spiffs_listDir();
 
   memset(buf, 0, sizeof(buf)); //emtpy buffer
@@ -104,6 +102,7 @@ void setup() {
   //eRAM.eramBegin();
   delay(100);
   check42();
+  check24();
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
@@ -128,11 +127,11 @@ void loop() {
 
     Serial.println("Loop Test");
     loopTest();
-    
+
   }
 }
 
-void loopTest2(){
+void loopTest2() {
   int szLen;
   char xData[12048], xData1[12048], xData2[26];
 
@@ -164,30 +163,32 @@ void loopTest2(){
       else
         xData[jj] = 'a' + jj;
     }
-    eRAM.writeArrayDMA(ii*26, 26, xData);
+    eRAM.writeArrayDMA(ii * 26, 26, (uint8_t*)xData);
   }
 
+#ifdef DO_DEBUG
   Serial.println();
   for ( int ii = 0; ii < 100; ii++) {
-    eRAM.readArrayDMA(ii*26, 26, xData2);
+    eRAM.readArrayDMA(ii * 26, 26, (uint8_t*)xData2);
     for ( int jj = 0; jj < 26; jj++) {
       Serial.print( xData2[jj]);
     }
     Serial.println("  <<< eRAM");
     for ( int jj = 0; jj < 26; jj++) {
-      Serial.print( xData1[jj+(ii*26)]);
+      Serial.print( xData1[jj + (ii * 26)]);
     }
     Serial.println("  <<< FLASH");
   }
+#endif
 }
-
-
 
 void loopTest() {
   char * erName = (char *)0x70007000;
   char * erData = (char *)0x70007200;
   char xData[12048];
-  sprintf(erName, "%s", "F_" __TIME__);
+  static char fIdx = 'A';
+  sprintf(erName, "%s%c", "F_" __TIME__, fIdx++);
+  if ( fIdx > 'Z' ) fIdx = 'A';
   int kk = 0;
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
@@ -198,17 +199,6 @@ void loopTest() {
       if ( memcmp( xData, erData, kk)) {
         Serial.printf( "\n\n%d :: FAILED memcmp !\n%s\n", kk, erData );
         xData[kk] = erData[kk] = 0;
-
-        int uu = 0;
-        while ( uu < kk ) {
-
-          if ( 0 && memcmp( xData, erData, 100)) {
-            Serial.printf( "\n\n%d :: FAILED memcmp ! @%u \n\n", kk, uu );
-          }
-          uu += 100;
-          //Serial.printf( "%d :: RAM \n%s\n", kk, xData );
-          //Serial.printf( "%d :: ERAM \n%s\n", kk, erData );
-        }
         ii = jj = 200000;
       }
       kk++;
@@ -219,26 +209,35 @@ void loopTest() {
     kk++;
     xData[kk] = erData[kk] = '\n';
     kk++;
-    if ( kk > 60 ) { // debug
-      xData[kk] = erData[kk] = 0;
-      Serial.printf( "%d :: RAM \n%s\n", kk, xData );
-      Serial.printf( "%d :: ERAM \n%s\n", kk, erData );
-    }
   }
+#ifdef DO_DEBUG
+  xData[kk] = erData[kk] = 0;
+  Serial.printf( "%d :: RAM \n%s\n", kk, xData );
+  Serial.printf( "%d :: ERAM \n%s\n", kk, erData );
+#endif
   erData[kk] = 0;
   if ( memcmp( xData, erData, kk)) {
     Serial.printf( "\n\n%d :: FAILED memcmp !\n%s\n", kk, erData );
-    delay(300);
     xData[kk] = erData[kk] = 0;
     Serial.printf( "%d :: RAM \n%s\n", kk, xData );
     Serial.printf( "%d :: ERAM \n%s\n", kk, erData );
-    delay(10000);
   }
-
+  my_us = 0;
+  spiffs_file fd = SPIFFS_open(&fs, erName, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  if (SPIFFS_write(&fs, fd, &erData[0], 2600 ) < 0) Serial.printf("loopTest() errno %i\n", SPIFFS_errno(&fs));
+  if ( fIdx > 'C') {
+    Serial.println("\t first 2600 bytes");
+    if (SPIFFS_write(&fs, fd, &erData[2600], kk - 2600 ) < 0) Serial.printf("loopTest() errno %i\n", SPIFFS_errno(&fs));
+  }
+  SPIFFS_close(&fs, fd);
+  Serial.printf( "\t loopTest write took %lu elapsed us\n", (uint32_t)my_us );
+  Serial.println("\t loopTest Directory contents:");
+  test_spiffs_listDir();
+#ifdef DO_DEBUG
   Serial.println( erName );
   Serial.printf( "%s\n", erData );
-  Serial.println( erName );
-
+#endif
+  Serial.println();
 }
 
 
@@ -386,14 +385,13 @@ void my_spiffs_mount() {
   Serial.printf("Mount ADDR 0x%X with res: %i\n", cfg.phys_addr, res);
 }
 
-elapsedMicros my_us;
 uint32_t errCnt = 0;
 void check42() {
   byte value;
   uint32_t ii;
   uint32_t jj = 0, kk = 0;
+  Serial.print("\n    ERAM ========== memory map ====== eRAM class ====== check42() : WRITE !!!!\n");
   Serial.printf("\t\tERAM length 0x%X element size of %d\n", sizeofERAM, sizeof( valERAM ));
-  Serial.print("\n    ERAM ========== memory map ================== check42() : WRITE !!!!\n");
   my_us = 0;
   for ( ii = 0; ii < sizeofERAM; ii++ ) {
     //if ( !( ii/1024) )  Serial.printf("ERAM @ 0x%X\n", ii*1024);
@@ -421,4 +419,45 @@ void check42() {
     Serial.printf( "Failed to find 42 in ERAM %d Times", jj );
   errCnt += jj;
   Serial.printf( "\tFound 42 in ERAM 0x%X Times\n", sizeofERAM - jj );
+}
+
+#if 0
+uint32_t *ptrERAM_32 = (uint32_t *)0x70000001l;  // Set to ERAM
+const uint32_t  sizeofERAM_32 = 0x7FFFFF / sizeof( ptrERAM_32 ); // sizeof free RAM in uint32_t units.
+#else
+uint8_t *ptrERAM_32 = (uint8_t *)0x70000001l;  // Set to ERAM
+const uint32_t  sizeofERAM_32 = 0x7FFFFE / sizeof( ptrERAM_32[0] ); // sizeof free RAM in uint32_t units.
+#endif
+void check24() {
+  uint32_t ii;
+  uint32_t jj = 0, kk = 0;
+  Serial.print("\n    ERAM ========== memory map ===== array* ======== check24() : WRITE !!!!\n");
+  Serial.printf("\t\tERAM length 0x%X element size of %d\n", sizeofERAM_32, sizeof( ptrERAM_32[0] ));
+  my_us = 0;
+  for ( ii = 0; ii < sizeofERAM_32; ii++ ) {
+    ptrERAM_32[ii] = 24;
+  }
+  Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
+  Serial.print("    ERAM ============================ check24() : COMPARE !!!!\n");
+  my_us = 0;
+  for ( ii = 0; ii < sizeofERAM_32; ii++ ) {
+    if ( 24 != ptrERAM_32[ii] ) {
+      if ( kk != 0 ) {
+        Serial.printf( "\t+++ Good Run of %u {bad @ %u}\n", kk, ii );
+        kk = 0;
+      }
+      if ( jj < 100 )
+        Serial.printf( "%3u=%8u\n", ii, ptrERAM_32[ii] );
+      jj++;
+    }
+    else {
+      kk++;
+    }
+  }
+  Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
+  if ( 0 == jj )
+    Serial.printf( "Good, " );
+  else
+    Serial.printf( "Failed to find 24 in ERAM %d Times", jj );
+  Serial.printf( "\tFound 24 in ERAM %X Times\n", sizeofERAM_32 - jj );
 }
