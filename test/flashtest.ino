@@ -48,7 +48,23 @@ void setup() {
   while (!Serial);
 
 #if 1
-  eraseFlashChip();
+  Serial.println("\n Enter 'y' in 6 seconds to format FlashChip - other to skip");
+  uint32_t pauseS = millis();
+  char chIn = 9;
+  while ( pauseS + 6000 > millis() && 9 == chIn ) {
+    if ( Serial.available() ) {
+      do {
+        if ( chIn != 'y' )
+          chIn = Serial.read();
+        else
+          Serial.read();
+      }
+      while ( Serial.available() );
+    }
+  }
+  if ( chIn == 'y' ) {
+    eraseFlashChip();
+  }
 #endif
 
   Serial.println("Mount SPIFFS:");
