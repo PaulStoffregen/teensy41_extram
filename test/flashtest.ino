@@ -2,7 +2,7 @@
    This test uses the optional quad spi flash on Teensy 4.1
    https://github.com/pellepl/spiffs/wiki/Using-spiffs
    https://github.com/pellepl/spiffs/wiki/FAQ
-   
+
    ATTENTION: Flash needs to be empty before first use of SPIFFS
 
 
@@ -14,7 +14,7 @@
 
 static spiffs fs; //filesystem
 
-char buf[512] = "Hello World! What a wonderful World :)";
+char buf[512] = "Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :) Hello World! What a wonderful World :)";
 int szLen = strlen( buf );
 
 void test_spiffs_write() {
@@ -47,12 +47,13 @@ static void test_spiffs_listDir() {
 void setup() {
   while (!Serial);
 
-#if 0
+#if 1
   eraseFlashChip();
 #endif
 
   Serial.println("Mount SPIFFS:");
-  my_spiffs_mount();
+  int res = my_spiffs_mount();
+  Serial.printf("mount res: %i\n", res);
 
 #if 1
   Serial.println("Write file:");
@@ -375,14 +376,14 @@ static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, ui
   FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
   src = (const uint8_t *)data;
   FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
-  
+
   while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
 
     if (n & FLEXSPI_INTR_IPTXWE) {
       wrlen = length;
       if (wrlen > 8) wrlen = 8;
       if (wrlen > 0) {
-  
+
         //memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen); !crashes sometimes!
         //src += wrlen;
         uint8_t *p = (uint8_t *) &FLEXSPI2_TFDR0;
@@ -391,31 +392,36 @@ static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, ui
         FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
       }
     }
-    
+
   }
-  
+
   if (n & FLEXSPI_INTR_IPCMDERR) {
     Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
   }
-  
+
   FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
 }
 
 void eraseFlashChip() {
   setupFlexSPI2();
   setupFlexSPI2Flash();
+
+  waitFlash();
   flexspi_ip_command(11, flashBaseAddr);
 
   Serial.println("Erasing... (may take some time)");
   uint32_t t = millis();
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase
   flexspi_ip_command(15, flashBaseAddr);
+
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + flashBaseAddr), flashCapacity);
 #endif
+
   while (waitFlash(500)) {
     Serial.print(".");
   }
+
   t = millis() - t;
   Serial.printf("\nChip erased in %d seconds.\n", t / 1000);
 }
@@ -437,11 +443,9 @@ static u8_t spiffs_cache_buf[(LOG_PAGE_SIZE + 32) * 4];
 static const u32_t blocksize = 4096; //or 32k or 64k (set correct flash commands above)
 
 static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
-  uint8_t *p;
-  p = (uint8_t *)extBase;
-  p += addr;
+  waitFlash();
 #ifdef FLASH_MEMMAP
-  memcpy(dst, p, size);
+  memcpy(dst, (uint8_t *)extBase + addr, size);
 #else
   flexspi_ip_read(5, addr, dst, size);
 #endif
@@ -449,23 +453,28 @@ static s32_t my_spiffs_read(u32_t addr, u32_t size, u8_t *dst) {
 }
 
 static s32_t my_spiffs_write(u32_t addr, u32_t size, u8_t *src) {
+  waitFlash();
   flexspi_ip_command(11, flashBaseAddr);  //write enable
   flexspi_ip_write(13, addr, src, size);
+
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
-  waitFlash(); //TODO: Can we wait at the beginning instead?
+
   return SPIFFS_OK;
 }
 
 static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
   int s = size;
   while (s > 0) { //TODO: Is this loop needed, or is size max 4096?
+    waitFlash();
     flexspi_ip_command(11, flashBaseAddr);  //write enable
-    flexspi_ip_command(12, addr);
+    flexspi_ip_command(12, addr); //write
+
 #ifdef FLASH_MEMMAP
-    arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
+    arm_dcache_delete((void*)((uint32_t)extBase + addr), blocksize);
 #endif
+
     addr += blocksize;
     s -= blocksize;
     waitFlash(); //TODO: Can we wait at the beginning intead?
@@ -475,7 +484,7 @@ static s32_t my_spiffs_erase(u32_t addr, u32_t size) {
 
 //********************************************************************************************************
 
-void my_spiffs_mount() {
+int my_spiffs_mount() {
 
   setupFlexSPI2();
   setupFlexSPI2Flash();
@@ -500,5 +509,5 @@ void my_spiffs_mount() {
                          spiffs_cache_buf,
                          sizeof(spiffs_cache_buf),
                          0);
-  Serial.printf("mount res: %i\n", res);
+  return res;
 }
