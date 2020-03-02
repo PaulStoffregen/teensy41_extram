@@ -67,8 +67,7 @@
 class extRAM_t4 {
  public:
 	extRAM_t4();
-	int8_t  flashBegin(void);
-	int8_t	eramBegin(void);
+	int8_t  begin(uint8_t config);
 	byte	readBit(uint32_t ramAddr, uint8_t bitNb, byte *bit);
 	byte	setOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
