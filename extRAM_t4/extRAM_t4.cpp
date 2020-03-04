@@ -71,7 +71,7 @@ int8_t extRAM_t4::begin(uint8_t config) {
 			| CCM_CBCMR_FLEXSPI2_PODF(7) | CCM_CBCMR_FLEXSPI2_CLK_SEL(0); // 49.5 MHz
 		}
 
-		if ( 1 ) { // FB edit
+		if ( 0 ) { // FB edit
 			CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK))
 			| CCM_CBCMR_FLEXSPI2_PODF(7) | CCM_CBCMR_FLEXSPI2_CLK_SEL(0); // 49.5 MHz
 		}
@@ -79,7 +79,7 @@ int8_t extRAM_t4::begin(uint8_t config) {
 		CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK))
 		| CCM_CBCMR_FLEXSPI2_PODF(5) | CCM_CBCMR_FLEXSPI2_CLK_SEL(2); // 528/6 = 111 MHz
 	  }
-		if ( 0 ) { //FB>>	 my RAM works up to :
+		if ( 1 ) { //FB>>	 my RAM works up to :
 			CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK))
 			| CCM_CBCMR_FLEXSPI2_PODF(4) | CCM_CBCMR_FLEXSPI2_CLK_SEL(2); // 528/5 = 132 MHz
 		}
