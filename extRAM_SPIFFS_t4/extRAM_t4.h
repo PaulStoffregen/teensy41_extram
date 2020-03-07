@@ -65,7 +65,7 @@ static spiffs fs; //filesystem
 	static const uint32_t eramBaseAddr = 0x07000000u;
 	static char flashID[8];
 	static const void* extBase = (void*)0x70000000u;
-	static uint32_t flashCapacity[2] = {16u * 1024u * 1024u, 16u * 1024u * 1024u};
+	static uint32_t flashCapacity[2] = {16u * 1024u * 1024u, 8u * 1024u * 1024u};
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
