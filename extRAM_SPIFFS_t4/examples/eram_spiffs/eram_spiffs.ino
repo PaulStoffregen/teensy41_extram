@@ -86,28 +86,29 @@ void loop() {
   char chIn = 9;
   if ( Serial.available() ) {
     do {
-      if ( chIn != 'y' )
+      if ( chIn != '2' )
         chIn = Serial.read();
       else
         Serial.read();
     }
     while ( Serial.available() );
   }
-  if ( chIn == 'y' ) {
+  if ( chIn == '2' ) {
     Serial.println();
     Serial.println("Loop Test2");
     loopTest2();
     Serial.println();
-    //Serial.println("Loop Test");
-    //loopTest();
   }
 }
 
 void loopTest2() {
-  int szLen;
-  char xData[12048], xData1[12048], xData2[26];
+  char xData[12048], xData1[12048];
 
-  char fname1[32] = "loopTest2";
+  char fname1[52];
+  static char fIdx = 'A';
+  snprintf(fname1, 52, "lt2_%s%c", __TIME__, fIdx++);
+  if ( fIdx > 'Z' ) fIdx = 'A';
+
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
   eRAM.fs_open_write(fname1);
   for ( int ii = 0; ii < 100; ii++) {
@@ -145,61 +146,4 @@ void loopTest2() {
     Serial.println("  <<< FLASH");
   }
 #endif
-}
-
-void loopTest() {
-
-  char fName[52];
-  char xData[12048];
-  static char fIdx = 'A';
-  snprintf(fName, 52, "F_%s%c", __TIME__, fIdx++);
-  
-  if ( fIdx > 'Z' ) fIdx = 'A';
-  int kk = 0;
-  for ( int ii = 0; ii < 100; ii++) {
-    for ( int jj = 0; jj < 26; jj++) {
-      if ( ii % 2 )
-        xData[kk]  = 'A' + jj;
-      else
-        xData[kk] =  'a' + jj;
-      //if ( memcmp( xData, erData, kk)) {
-      //  Serial.printf( "\n\n%d :: FAILED memcmp !\n%s\n", kk, erData );
-      //  xData[kk] = erData[kk] = 0;
-      //  ii = jj = 200000;
-      //}
-      kk++;
-    }
-    xData[kk] =  '0' + ((ii / 10) % 10);
-    kk++;
-    xData[kk] =  '0' + ii % 10;
-    kk++;
-    xData[kk]  = '\n';
-    kk++;
-  }
-#ifdef DO_DEBUG
-  xData[kk]  = 0;
-  Serial.printf( "%d :: RAM \n%s\n", kk, xData );
-#endif
-
-  my_us = 0;
-  eRAM.fs_mount();
-
-  eRAM.fs_open_write(fName);
-
-  eRAM.write_fs(xData, kk);
-  if ( fIdx > 'C') {
-    Serial.println("\t first 2600 bytes");
-    //if (SPIFFS_write(&fs, fd, (u8_t *)xData, kk - 2600 ) < 0) Serial.printf("loopTest() errno %i\n", SPIFFS_errno(&fs));
-    eRAM.write_fs(xData, kk - 2600);
-  }
-  eRAM.fs_close_write();
-  
-  Serial.printf( "\t loopTest write took %lu elapsed us\n", (uint32_t)my_us );
-  Serial.println("\t loopTest Directory contents:");
-  eRAM.fs_listDir();
-#ifdef DO_DEBUG
-  Serial.println( erName );
-  Serial.printf( "%s\n", erData );
-#endif
-  Serial.println();
 }
