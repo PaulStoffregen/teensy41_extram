@@ -30,7 +30,6 @@
 /**************************************************************************/
 	uint8_t _spiffs_region;
 
-
 extRAM_t4::extRAM_t4() 
 {
 
@@ -42,10 +41,7 @@ extRAM_t4::extRAM_t4()
 
 int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 	  _spiffs_region = spiffs_region;
-	  if(spiffs_region == 1){
-		  //config = 0;
-	  }
-	  
+	
 	  memset(flashID, 0, sizeof(flashID));
 	  int8_t result;
 	  // initialize pins
@@ -252,7 +248,7 @@ int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 		  
 		  result = 0;
 	  }
-	  Serial.flush();
+	  
 	return result;
 
 }
@@ -561,7 +557,6 @@ void extRAM_t4::writeLong(uint32_t ramAddr, uint32_t value)
 */
 /**************************************************************************/
 void extRAM_t4::eraseDevice(void) {
-
 		byte result = 0;
 		uint32_t i, jj = 0;
 
@@ -596,7 +591,6 @@ void extRAM_t4::eraseDevice(void) {
 		*/
 		Serial.println("device erased");
 		Serial.println("...... ...... ......");
-
 }
 
 
@@ -745,8 +739,6 @@ void extRAM_t4::fs_write(const char* fname, const char *dst) {
 
   // Surely, I've mounted spiffs before entering here
   spiffs_file fd = SPIFFS_open(&fs, fname, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
-  	Serial.print("FD: ");Serial.println(fd);
-
   if (SPIFFS_write(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
@@ -798,7 +790,11 @@ static bool extRAM_t4::waitFlash(uint32_t timeout) {
   uint32_t t = millis();
   FLEXSPI_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF; // clear rx fifo
   do {
-    flexspi_ip_read(8, flashBaseAddr[_spiffs_region], &val, 1 );
+	if(_spiffs_region == 0) {
+		flexspi_ip_read(8, flashBaseAddr[_spiffs_region], &val, 1 );
+	} else {
+		flexspi_ip_read(5, flashBaseAddr[_spiffs_region], &val, 1 );
+	}
     if (timeout && (millis() - t > timeout)) return 1;
   } while  ((val & 0x01) == 1);
   return 0;
@@ -851,17 +847,18 @@ static s32_t extRAM_t4::spiffs_read(u32_t addr, u32_t size, u8_t * dst) {
 }
 
 static s32_t extRAM_t4::spiffs_write(u32_t addr, u32_t size, u8_t * src) {
-  if(_spiffs_region == 0){
-	  flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);  //write enable
-	  flexspi_ip_write(13, addr, src, size);
+  if(_spiffs_region == 0) {
+	flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);  //write enable
+	flexspi_ip_write(13, addr, src, size);
   } else {
-	flexspi_ip_write(6, addr, src, size);
+	  flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);  //write enable
+	  flexspi_ip_write(6, addr, src, size);
   }
-
 #ifdef FLASH_MEMMAP
   arm_dcache_delete((void*)((uint32_t)extBase + addr), size);
 #endif
-  //waitFlash(); //TODO: Can we wait at the beginning instead?
+  if(_spiffs_region == 0) 
+	waitFlash(); //TODO: Can we wait at the beginning instead?
   return SPIFFS_OK;
 }
 

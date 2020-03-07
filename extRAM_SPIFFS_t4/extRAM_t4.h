@@ -94,6 +94,8 @@ class extRAM_t4 : spiffs
 
 	void	eraseDevice(void);
 	
+	void setupFLASH1();
+	void setupFlash2();
 	void printStatusRegs();
 	
 	void readmem(uint32_t addr, void *data, uint32_t length);
@@ -118,6 +120,8 @@ class extRAM_t4 : spiffs
 	void fs_open_read(const char* fname);
 	void read_fs(const char *dst, int szLen);
 	void fs_close();
+
+	
 	
 	spiffs_file fd1;
 
