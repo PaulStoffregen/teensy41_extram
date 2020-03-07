@@ -61,11 +61,11 @@ static spiffs fs; //filesystem
 #define ERROR_10 10 // Not permitted opération
 #define ERROR_11 11 // Memory address out of range
 
-	static const uint32_t flashBaseAddr = 0x01000000u;
+	static const uint32_t flashBaseAddr[2] = { 0x01000000u, 0x00000000u};
 	static const uint32_t eramBaseAddr = 0x07000000u;
 	static char flashID[8];
 	static const void* extBase = (void*)0x70000000u;
-	static uint32_t flashCapacity = 16u * 1024u * 1024u;
+	static uint32_t flashCapacity[2] = {16u * 1024u * 1024u, 16u * 1024u * 1024u};
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
@@ -73,7 +73,7 @@ class extRAM_t4 : spiffs
 {
  public:
 	extRAM_t4();
-	int8_t  begin(uint8_t config);
+	int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
 	byte	readBit(uint32_t ramAddr, uint8_t bitNb, byte *bit);
 	byte	setOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
@@ -94,8 +94,6 @@ class extRAM_t4 : spiffs
 
 	void	eraseDevice(void);
 	
-	void setupFLASH1();
-	void setupFlash2();
 	void printStatusRegs();
 	
 	void readmem(uint32_t addr, void *data, uint32_t length);
@@ -120,8 +118,6 @@ class extRAM_t4 : spiffs
 	void fs_open_read(const char* fname);
 	void read_fs(const char *dst, int szLen);
 	void fs_close();
-
-	
 	
 	spiffs_file fd1;
 
