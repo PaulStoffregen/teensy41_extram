@@ -14,7 +14,7 @@
 #include <spiffs.h>
 
 extRAM_t4 eRAM;
-uint8_t config = 2; //0 - init eram only, 1-init flash only, 2-init both
+uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
 uint8_t spiffs_region = 1; //0 - flash, 1 - eram
 
 //#define DO_DEBUG 1
