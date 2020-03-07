@@ -83,19 +83,25 @@ void setup() {
 }
 
 void loop() {
-  char chIn = 9;
+  char chIn = 255;
   if ( Serial.available() ) {
     do {
-      if ( chIn != '2' )
+      if ( chIn != '2' && chIn != '1' )
         chIn = Serial.read();
       else
         Serial.read();
     }
     while ( Serial.available() );
   }
+  if ( chIn == '1' ) {
+    Serial.println();
+    Serial.println("Loop Test1 - New Files");
+    loopTest1();
+    Serial.println();
+  }
   if ( chIn == '2' ) {
     Serial.println();
-    Serial.println("Loop Test2");
+    Serial.println("Loop Test2 - Overwrite");
     loopTest2();
     Serial.println();
   }
@@ -104,9 +110,53 @@ void loop() {
 void loopTest2() {
   char xData[12048], xData1[12048];
 
+  char fname1[52] = "loopTest2";
+  
+  //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  eRAM.fs_open_write(fname1);
+  for ( int ii = 0; ii < 100; ii++) {
+    for ( int jj = 0; jj < 26; jj++) {
+      if ( ii % 2 )
+        xData[jj] = 'A' + jj;
+      else
+        xData[jj] = 'a' + jj;
+    }
+    //if (SPIFFS_write(&fs, fd1, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+    eRAM.write_fs(xData,26);
+  }
+  //SPIFFS_close(&fs, fd1);
+  //SPIFFS_fflush(&fs, fd1);
+  eRAM.fs_close_write();
+  
+
+  Serial.println("Directory contents:");
+  eRAM.fs_listDir();
+
+  eRAM.fs_open_read(fname1);
+  //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  eRAM.read_fs(xData1,2600);
+  //SPIFFS_close(&fs, fd);
+  eRAM.fs_close();
+
+
+#ifdef DO_DEBUG
+  Serial.println();
+  for ( int ii = 0; ii < 100; ii++) {
+    Serial.println("  <<< eRAM");
+    for ( int jj = 0; jj < 26; jj++) {
+      Serial.print( xData1[jj + (ii * 26)]);
+    }
+    Serial.println("  <<< FLASH");
+  }
+#endif
+}
+
+void loopTest1() {
+  char xData[12048], xData1[12048];
+
   char fname1[52];
   static char fIdx = 'A';
-  snprintf(fname1, 52, "lt2_%s%c", __TIME__, fIdx++);
+  snprintf(fname1, 52, "lt1_%s_%c", __TIME__, fIdx++);
   if ( fIdx > 'Z' ) fIdx = 'A';
 
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
