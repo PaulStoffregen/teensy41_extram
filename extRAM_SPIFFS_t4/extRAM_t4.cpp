@@ -28,8 +28,16 @@
     Constructor
 */
 /**************************************************************************/
+	static spiffs fs; //filesystem
+	
 	uint8_t _spiffs_region;
-
+	static const uint32_t flashBaseAddr[3] = { 0x01000000u, 0x00000000u, 0x00000000u};
+	static const uint32_t eramBaseAddr = 0x07000000u;
+	static char flashID[8];
+	static const void* extBase = (void*)0x70000000u;
+	//4meg = 4,194,304‬bytes
+	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u, 8u * 1024u * 1024u, 4194305u};
+	
 extRAM_t4::extRAM_t4() 
 {
 
@@ -41,9 +49,9 @@ extRAM_t4::extRAM_t4()
 
 int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 	  _spiffs_region = spiffs_region;
-	
+
 	  memset(flashID, 0, sizeof(flashID));
-	  int8_t result;
+	  int8_t result = 0;
 	  // initialize pins
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_22 = 0xB0E1; // 100K pullup, medium drive, max speed
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_23 = 0x10E1; // keeper, medium drive, max speed
@@ -557,8 +565,8 @@ void extRAM_t4::writeLong(uint32_t ramAddr, uint32_t value)
 */
 /**************************************************************************/
 void extRAM_t4::eraseDevice(void) {
-		byte result = 0;
-		uint32_t i, jj = 0;
+		uint32_t i=0;
+		uint32_t jj = 0;
 
 		Serial.println("Start erasing device");
 		Serial.flush();
@@ -573,7 +581,6 @@ void extRAM_t4::eraseDevice(void) {
 		  i++;
 		}
 		Serial.println();
-		result = 0;
 		/*
 		#if defined(SERIAL_DEBUG) && (SERIAL_DEBUG == 1)
 			if (Serial){
@@ -734,50 +741,54 @@ void extRAM_t4::fs_listDir() {
   SPIFFS_closedir(&d);
 }
 
-void extRAM_t4::fs_write(const char* fname, const char *dst) {
+//Functions to Read/Write all buffered data and close file
+void extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flags) {
 	int szLen = strlen( dst );
 
   // Surely, I've mounted spiffs before entering here
-  spiffs_file fd = SPIFFS_open(&fs, fname, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  spiffs_file fd = SPIFFS_open(&fs, fname, flags, 0);
   if (SPIFFS_write(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
 }
 
-void extRAM_t4::fs_read(const char* fname, const char *dst, int szLen) {
-
+void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
   // Surely, I've mounted spiffs before entering here
-  spiffs_file  fd = SPIFFS_open(&fs, fname, SPIFFS_RDWR, 0);
+  spiffs_file  fd = SPIFFS_open(&fs, fname, flags, 0);
   if (SPIFFS_read(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
 }
 
-void extRAM_t4::fs_open_write(const char* fname){
-	
-	spiffs_file fd = SPIFFS_open(&fs, fname, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+//Basic wrapper functions to sppiff commands.
+/**
+ * Opens/creates a file.
+ * @param fs            the file system struct
+ * @param path          the path of the new file
+ * @param flags         the flags for the open command, can be combinations of
+ *                      SPIFFS_APPEND, SPIFFS_O_TRUNC, SPIFFS_CREAT, SPIFFS_RDONLY,
+ *                      SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
+**/
+void extRAM_t4::f_open(const char* fname, spiffs_flags flags){
+	spiffs_file fd = SPIFFS_open(&fs, fname, flags, 0);
+	SPIFFS_errno(&fs);
 	fd1 = fd;
+
 }
 
-void extRAM_t4::write_fs(const char *dst, int szLen) {
+void extRAM_t4::f_write(const char *dst, int szLen) {
   if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
 }
 
-void extRAM_t4::fs_close_write(){
+void extRAM_t4::f_close_write(){
   SPIFFS_close(&fs, fd1);
   SPIFFS_fflush(&fs, fd1);
 }
 
-void extRAM_t4::fs_open_read(const char* fname){
-	
-	spiffs_file fd = SPIFFS_open(&fs, fname, SPIFFS_RDWR, 0);
-	fd1 = fd;
-}
-
-void extRAM_t4::read_fs(const char *dst, int szLen) {
+void extRAM_t4::f_read(const char *dst, int szLen) {
   if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
 }
 
-void extRAM_t4::fs_close(){
+void extRAM_t4::f_close(){
   SPIFFS_close(&fs, fd1);
 }
 
@@ -851,7 +862,6 @@ static s32_t extRAM_t4::spiffs_write(u32_t addr, u32_t size, u8_t * src) {
 	flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);  //write enable
 	flexspi_ip_write(13, addr, src, size);
   } else {
-	  flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);  //write enable
 	  flexspi_ip_write(6, addr, src, size);
   }
 #ifdef FLASH_MEMMAP
