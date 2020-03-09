@@ -23,7 +23,6 @@
 #include <Wire.h>
 
 #include <spiffs.h>
-static spiffs fs; //filesystem
   
 // Enabling debug I2C - comment to disable / normal operations
 #ifndef SERIAL_DEBUG
@@ -43,10 +42,6 @@ static spiffs fs; //filesystem
 // IDs
 //Manufacturers codes
 
-
-// The density codes gives the memory's adressing scheme
-
-
 // Error management
 #define ERROR_0 0 // Success    
 #define ERROR_1 1 // Data too long to fit the transmission buffer on Arduino
@@ -61,15 +56,11 @@ static spiffs fs; //filesystem
 #define ERROR_10 10 // Not permitted opération
 #define ERROR_11 11 // Memory address out of range
 
-	static const uint32_t flashBaseAddr[2] = { 0x01000000u, 0x00000000u};
-	static const uint32_t eramBaseAddr = 0x07000000u;
-	static char flashID[8];
-	static const void* extBase = (void*)0x70000000u;
-	static uint32_t flashCapacity[2] = {16u * 1024u * 1024u, 8u * 1024u * 1024u};
+
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
-class extRAM_t4 : spiffs
+class extRAM_t4 : public Print
 {
  public:
 	extRAM_t4();
@@ -79,10 +70,10 @@ class extRAM_t4 : spiffs
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	toggleBit(uint32_t ramAddr, uint8_t bitNb);
 	
+	void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
+	void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	void	readArray (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	void	writeArray (uint32_t ramAddr, uint32_t items, uint8_t value[]);
-	void	readArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t data[]);
-	void	writeArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	
 	void	readByte (uint32_t ramAddr, uint8_t *value);
 	void	writeByte (uint32_t ramAddr, uint8_t value);
@@ -94,8 +85,6 @@ class extRAM_t4 : spiffs
 
 	void	eraseDevice(void);
 	
-	void setupFLASH1();
-	void setupFlash2();
 	void printStatusRegs();
 	
 	void readmem(uint32_t addr, void *data, uint32_t length);
@@ -110,18 +99,20 @@ class extRAM_t4 : spiffs
 	static s32_t spiffs_read(u32_t addr, u32_t size, u8_t * dst);
 	void eraseFlashChip();
 	static bool waitFlash(uint32_t timeout = 0);
-	void fs_read(const char* fname, const char *dst, int szLen);
-	void fs_write(const char* fname, const char *dst);
 	void fs_listDir();
 	
-	void fs_open_write(const char* fname);
-	void write_fs(const char *dst, int szLen);
-	void fs_close_write();
-	void fs_open_read(const char* fname);
-	void read_fs(const char *dst, int szLen);
-	void fs_close();
+	void f_open(const char* fname, spiffs_flags flags);
+	void f_write(const char *dst, int szLen);
+	void f_read(const char *dst, int szLen);
+	void f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
+	void f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
 
-	
+	void f_close_write();
+	void f_close();
+
+	// overwrite print functions:
+	virtual size_t write(uint8_t);
+	virtual size_t write(const uint8_t *buffer, size_t size);
 	
 	spiffs_file fd1;
 
