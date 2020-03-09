@@ -9,6 +9,11 @@
    Frank B, 2020
 */
 
+// do dtSTART; and dtEND( "what") to show time
+elapsedMicros _dt;
+#define dtSTART {_dt=0;}
+#define dtEND(a) { Serial.printf( "\n%s()_%s : dt %ul us", __func__, a, (uint32_t)_dt);}
+// do dtSTART; and dtEND( "what") to show time
 
 #include <extRAM_t4.h>
 #include <spiffs.h>
@@ -94,8 +99,9 @@ void loop() {
     while ( Serial.available() );
   }
   if ( chIn == '0' ) {
-    Serial.println("\n0 :: Directory contents:");
+    dtSTART
     eRAM.fs_listDir();
+    dtEND( "0 :: Directory contents:");
     Serial.println();
   }
   else if ( chIn == '1' ) {
@@ -133,6 +139,7 @@ void loopTest2() {
    *                SPIFFS_APPEND, SPIFFS_TRUNC, SPIFFS_CREAT, SPIFFS_RDONLY,
    *                SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
   **/
+  dtSTART;
   eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
@@ -147,17 +154,18 @@ void loopTest2() {
   //SPIFFS_close(&fs, fd1);
   //SPIFFS_fflush(&fs, fd1);
   eRAM.f_close();
+  dtEND( "write:");
 
-
-  Serial.println("Directory contents:");
+  Serial.println("\nDirectory contents:");
   eRAM.fs_listDir();
 
+  dtSTART;
   eRAM.f_open(fname1, SPIFFS_RDWR);
   //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   eRAM.f_read(xData1, 2600);
   //SPIFFS_close(&fs, fd);
   eRAM.f_close();
-
+  dtEND( "f_read:");
 
 #ifdef DO_DEBUG
   Serial.println();
@@ -180,6 +188,7 @@ void loopTest1() {
   if ( fIdx > 'Z' ) fIdx = 'A';
 
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  dtSTART;
   eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
@@ -196,7 +205,7 @@ void loopTest1() {
   eRAM.f_close();
 
 
-  Serial.println("Directory contents:");
+  Serial.println("\nDirectory contents:");
   eRAM.fs_listDir();
 
   eRAM.f_open(fname1, SPIFFS_RDWR);
@@ -204,6 +213,7 @@ void loopTest1() {
   eRAM.f_read(xData1, 2600);
   //SPIFFS_close(&fs, fd);
   eRAM.f_close();
+  dtEND( "write");
 
 
 #ifdef DO_DEBUG
@@ -227,6 +237,7 @@ void loopTest3() {
 
   char fname1[32] = "loopTest3";
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  dtSTART;
   eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
@@ -241,7 +252,7 @@ void loopTest3() {
   //SPIFFS_close(&fs, fd1);
   //SPIFFS_fflush(&fs, fd1);
   eRAM.f_close();
-
+  dtEND( "write");
 
 //  Serial.println("Directory contents:");
 //  eRAM.fs_listDir();
@@ -252,6 +263,7 @@ void loopTest3() {
   //SPIFFS_close(&fs, fd);
   eRAM.f_close();
 
+  dtSTART;
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
       if ( ii % 2 )
@@ -261,6 +273,7 @@ void loopTest3() {
     }
     eRAM.writeArray(ii * 26 + part_offset, 26, (uint8_t*)xData);
   }
+  dtEND( "writeArray");
 
 #if 1
   Serial.println();
