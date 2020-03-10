@@ -19,9 +19,10 @@ elapsedMicros _dt;
 #include <spiffs.h>
 
 extRAM_t4 eRAM;
+
 uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-uint8_t spiffs_region = 2; //0 - flash, 1 - eram
-//2 - 2 4meg eram pseudo partitions
+uint8_t spiffs_region = 2;  //0 - flash, 1 - eram
+                            //2 - 2 4meg eram pseudo partitions
 //#define DO_DEBUG 1
 
 char buf[512] = "Hello World! What a wonderful World :)";
@@ -78,13 +79,31 @@ void setup() {
   eRAM.f_readFile(fname, buf, sizeof(buf) / sizeof(char), SPIFFS_RDWR);
   Serial.println(buf);
 
-  Serial.println();
-
+  Serial.println("==================================================");
   Serial.println();
   Serial.println("Mount SPIFFS:");
   eRAM.fs_mount();
   Serial.println("Directory contents:");
   eRAM.fs_listDir();
+  
+  //test of print
+  Serial.println();
+  Serial.println("Using println and printf to printoutput file");
+  eRAM.f_open("PRINTOUTPUT", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  eRAM.println("THIS IS A TEST");
+  eRAM.printf("Float: %f, Int: %c\n", 26.4, 98);
+  eRAM.f_close();
+
+  Serial.println("Directory contents:");
+  eRAM.fs_listDir();
+  Serial.println();
+  Serial.println("Test print output:");
+  eRAM.f_open("PRINTOUTPUT", SPIFFS_RDONLY);
+  eRAM.f_read(buf,512);
+  eRAM.f_close();
+  Serial.println(buf);
+  Serial.println("==================================================");
+
 }
 
 void loop() {

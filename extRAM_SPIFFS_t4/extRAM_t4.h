@@ -60,7 +60,7 @@
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
-class extRAM_t4 : spiffs
+class extRAM_t4 : public Print
 {
  public:
 	extRAM_t4();
@@ -70,10 +70,10 @@ class extRAM_t4 : spiffs
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	toggleBit(uint32_t ramAddr, uint8_t bitNb);
 	
+	void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
+	void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	void	readArray (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	void	writeArray (uint32_t ramAddr, uint32_t items, uint8_t value[]);
-	void	readArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t data[]);
-	void	writeArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	
 	void	readByte (uint32_t ramAddr, uint8_t *value);
 	void	writeByte (uint32_t ramAddr, uint8_t value);
@@ -110,7 +110,9 @@ class extRAM_t4 : spiffs
 	void f_close_write();
 	void f_close();
 
-	
+	// overwrite print functions:
+	virtual size_t write(uint8_t);
+	virtual size_t write(const uint8_t *buffer, size_t size);
 	
 	spiffs_file fd1;
 

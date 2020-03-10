@@ -38,7 +38,7 @@
 	//4meg = 4,194,304‬bytes
 	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u, 8u * 1024u * 1024u, 4194305u};
 	
-extRAM_t4::extRAM_t4() 
+extRAM_t4::extRAM_t4()
 {
 
 }
@@ -285,7 +285,7 @@ void extRAM_t4::printStatusRegs() {
 
 */
 /**************************************************************************/
-void extRAM_t4::writeArray (uint32_t ramAddr, uint32_t items, uint8_t values[])
+void extRAM_t4::writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t values[])
 { 
   //Serial.printf("write @%06X:", ramAddr);
   //for (uint32_t i=0; i < items; i++) Serial.printf(" %02X", *(((uint8_t *)values) + i));
@@ -296,7 +296,7 @@ void extRAM_t4::writeArray (uint32_t ramAddr, uint32_t items, uint8_t values[])
 
 }
 
-void extRAM_t4::writeArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t values[])
+void extRAM_t4::writeArray (uint32_t ramAddr, uint32_t items, uint8_t values[])
 { 
   uint32_t ii;
 	uint8_t *ptrERAM = (uint8_t *)(0x70000000 + ramAddr);
@@ -323,7 +323,7 @@ void extRAM_t4::writeArrayDMA (uint32_t ramAddr, uint32_t items, uint8_t values[
 void extRAM_t4::writeByte (uint32_t ramAddr, uint8_t value)
 {
 	uint8_t buffer[] = {value}; 
-	extRAM_t4::writeArrayDMA(ramAddr, 1, buffer);
+	extRAM_t4::writeArray(ramAddr, 1, buffer);
 }
 
 
@@ -335,7 +335,7 @@ void extRAM_t4::writeByte (uint32_t ramAddr, uint8_t value)
 
 */
 /**************************************************************************/
-void extRAM_t4::readArray (uint32_t ramAddr, uint32_t length, uint8_t data[])
+void extRAM_t4::readArray_old (uint32_t ramAddr, uint32_t length, uint8_t data[])
 {
 	//if ((ramAddr >= maxaddress) || ((ramAddr + (uint16_t) items - 1) >= maxaddress)) rvoid readArray (uint16_t ramAddr, uint32_t length, uint8_t *data)
 
@@ -357,7 +357,7 @@ void extRAM_t4::readArray (uint32_t ramAddr, uint32_t length, uint8_t data[])
 
 }
 
-void extRAM_t4::readArrayDMA (uint32_t ramAddr, uint32_t length, uint8_t *data)
+void extRAM_t4::readArray (uint32_t ramAddr, uint32_t length, uint8_t *data)
 {
   uint32_t ii;
   uint8_t *ptrERAM = (uint8_t *)(0x70000000 + ramAddr);
@@ -386,7 +386,7 @@ void extRAM_t4::readArrayDMA (uint32_t ramAddr, uint32_t length, uint8_t *data)
 void extRAM_t4::readByte (uint32_t ramAddr, uint8_t *value) 
 {
 	uint8_t buffer[1];
-	extRAM_t4::readArrayDMA(ramAddr, 1, buffer);
+	extRAM_t4::readArray(ramAddr, 1, buffer);
 	*value = buffer[0];
 }
 
@@ -886,6 +886,19 @@ static s32_t extRAM_t4::fs_erase(u32_t addr, u32_t size) {
   }
   return SPIFFS_OK;
 }
+
+// overwrite functions from class Print:
+
+size_t extRAM_t4::write(uint8_t c) {
+	return write(&c, 1);
+}
+
+size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
+{
+	f_write(buffer, size);
+	
+}
+
 
 //********************************************************************************************************
 
