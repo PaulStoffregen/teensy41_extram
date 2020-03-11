@@ -181,13 +181,7 @@ void setup() {
   Serial.println(buf);
   Serial.println("==================================================");
 
-  Serial.println("\n*** Commands ***");
-  Serial.println("    0 - Directory contents");
-  Serial.println("    1 - Loop Test1 - New Files");
-  Serial.println("    2 - Loop Test2 - Overwrite");
-  Serial.println("    3 - Loop Test3 - Partition Test");
-  Serial.println("    4 - Loop Test4 - check24()");
-  Serial.println("    t - Toggle display updates on or off");
+  showCommandList();
 }
 
 void frame_callback() {
@@ -259,6 +253,17 @@ void frame_callback() {
 
 }
 
+void showCommandList() {
+  Serial.println("\n*** Commands ***");
+  Serial.println("    0 - Directory contents");
+  Serial.println("    1 - Loop Test1 - New Files");
+  Serial.println("    2 - Loop Test2 - Overwrite");
+  Serial.println("    3 - Loop Test3 - Partition Test");
+  Serial.println("    4 - Loop Test4 - check24()");
+  Serial.println("    t - Toggle display updates on or off");
+
+}
+
 void loop(void) {
   // See if any text entered
   int ich;
@@ -294,10 +299,12 @@ void loop(void) {
         check24();
         Serial.println();
         break;
+      default:
+        showCommandList();
+        break;
     }
   }
 }
-
 void toggleOnOffDisplay() {
   if (!tft.asyncUpdateActive()) {
     // We are not running DMA currently so start it up.
