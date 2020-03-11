@@ -101,7 +101,7 @@ class extRAM_t4 : public Print
 	static bool waitFlash(uint32_t timeout = 0);
 	void fs_listDir();
 	
-	void f_open(const char* fname, spiffs_flags flags);
+	int f_open(const char* fname, spiffs_flags flags);
 	void f_write(const char *dst, int szLen);
 	void f_read(const char *dst, int szLen);
 	void f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
@@ -110,6 +110,9 @@ class extRAM_t4 : public Print
 	void f_close_write();
 	void f_close();
 
+	int f_seek(const char* fname, int32_t offset, int start);
+
+	
 	// overwrite print functions:
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);

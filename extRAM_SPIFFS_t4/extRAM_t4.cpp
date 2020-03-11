@@ -768,10 +768,11 @@ void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs
  *                      SPIFFS_APPEND, SPIFFS_O_TRUNC, SPIFFS_CREAT, SPIFFS_RDONLY,
  *                      SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
 **/
-void extRAM_t4::f_open(const char* fname, spiffs_flags flags){
+int extRAM_t4::f_open(const char* fname, spiffs_flags flags){
 	spiffs_file fd = SPIFFS_open(&fs, fname, flags, 0);
 	SPIFFS_errno(&fs);
 	fd1 = fd;
+	return fd;
 
 }
 
@@ -790,6 +791,23 @@ void extRAM_t4::f_read(const char *dst, int szLen) {
 
 void extRAM_t4::f_close(){
   SPIFFS_close(&fs, fd1);
+}
+
+/**
+ * Moves the read/write file offset. Resulting offset is returned or negative if error.
+ * lseek(fs, fd, 0, SPIFFS_SEEK_CUR) will thus return current offset.
+ * @param fs            the file system struct
+ * @param fh            the filehandle
+ * @param offs          how much/where to move the offset
+ * @param whence        if SPIFFS_SEEK_SET, the file offset shall be set to offset bytes
+ *                      if SPIFFS_SEEK_CUR, the file offset shall be set to its current location plus offset
+ *                      if SPIFFS_SEEK_END, the file offset shall be set to the size of the file plus offset, which should be negative
+ */
+
+int extRAM_t4::f_seek(const char* fname, int32_t offset, int start){
+	int res;
+	res = SPIFFS_lseek(&fs, fname, offset, start);
+	return res;
 }
 
 /*
