@@ -17,6 +17,7 @@ elapsedMicros _dt;
 
 #include <extRAM_t4.h>
 #include <spiffs.h>
+spiffs_file fh;
 
 extRAM_t4 eRAM;
 
@@ -88,22 +89,22 @@ void setup() {
   eRAM.fs_listDir();
 
   //test of print
-  Serial.println();
-  Serial.println("Using println and printf to printoutput file");
-  eRAM.f_open("PRINTOUTPUT", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
-  eRAM.println("THIS IS A TEST");
-  eRAM.printf("Float: %f, Int: %c\n", 26.4, 98);
-  eRAM.f_close();
+  //Serial.println();
+  //Serial.println("Using println and printf to printoutput file");
+  //eRAM.f_open(fh, "PRINTOUTPUT", SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  //eRAM.println("THIS IS A TEST");
+  //eRAM.printf("Float: %f, Int: %c\n", 26.4, 98);
+  //eRAM.f_close(fh);
 
-  Serial.println("Directory contents:");
-  eRAM.fs_listDir();
-  Serial.println();
-  Serial.println("Test print output:");
-  eRAM.f_open("PRINTOUTPUT", SPIFFS_RDONLY);
-  eRAM.f_read(buf, 512);
-  eRAM.f_close();
-  Serial.println(buf);
-  Serial.println("==================================================");
+  //Serial.println("Directory contents:");
+  //eRAM.fs_listDir();
+  //Serial.println();
+  //Serial.println("Test print output:");
+  //eRAM.f_open("PRINTOUTPUT", SPIFFS_RDONLY);
+  //eRAM.f_read(buf, 512);
+  //eRAM.f_close();
+  //Serial.println(buf);
+  //Serial.println("==================================================");
 
 }
 
@@ -165,7 +166,7 @@ void loopTest2() {
                     SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
   **/
   dtSTART;
-  eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  eRAM.f_open(fh, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
       if ( ii % 2 )
@@ -174,22 +175,22 @@ void loopTest2() {
         xData[jj] = 'a' + jj;
     }
     //if (SPIFFS_write(&fs, fd1, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-    eRAM.f_write(xData, 26);
+    eRAM.f_write(fh, xData, 26);
   }
   //SPIFFS_close(&fs, fd1);
   //SPIFFS_fflush(&fs, fd1);
-  eRAM.f_close();
+  eRAM.f_close(fh);
   dtEND( "write:");
 
   Serial.println("\nDirectory contents:");
   eRAM.fs_listDir();
 
   dtSTART;
-  eRAM.f_open(fname1, SPIFFS_RDWR);
+  eRAM.f_open(fh, fname1, SPIFFS_RDWR);
   //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  eRAM.f_read(xData1, 2600);
+  eRAM.f_read(fh, xData1, 2600);
   //SPIFFS_close(&fs, fd);
-  eRAM.f_close();
+  eRAM.f_close(fh);
   dtEND( "f_read:");
 
 #ifdef DO_DEBUG
@@ -214,7 +215,7 @@ void loopTest1() {
 
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
   dtSTART;
-  eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  eRAM.f_open(fh, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
       if ( ii % 2 )
@@ -223,21 +224,21 @@ void loopTest1() {
         xData[jj] = 'a' + jj;
     }
     //if (SPIFFS_write(&fs, fd1, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-    eRAM.f_write(xData, 26);
+    eRAM.f_write(fh, xData, 26);
   }
   //SPIFFS_close(&fs, fd1);
   //SPIFFS_fflush(&fs, fd1);
-  eRAM.f_close();
+  eRAM.f_close(fh);
 
 
   Serial.println("\nDirectory contents:");
   eRAM.fs_listDir();
 
-  eRAM.f_open(fname1, SPIFFS_RDWR);
+  eRAM.f_open(fh, fname1, SPIFFS_RDWR);
   //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  eRAM.f_read(xData1, 2600);
+  eRAM.f_read(fh, xData1, 2600);
   //SPIFFS_close(&fs, fd);
-  eRAM.f_close();
+  eRAM.f_close(fh);
   dtEND( "write");
 
 
@@ -263,7 +264,7 @@ void loopTest3() {
   char fname1[32] = "loopTest3";
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
   dtSTART;
-  eRAM.f_open(fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  eRAM.f_open(fh, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
   for ( int ii = 0; ii < 100; ii++) {
     for ( int jj = 0; jj < 26; jj++) {
       if ( ii % 2 )
@@ -272,21 +273,21 @@ void loopTest3() {
         xData[jj] = 'a' + jj;
     }
     //if (SPIFFS_write(&fs, fd1, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-    eRAM.f_write(xData, 26);
+    eRAM.f_write(fh, xData, 26);
   }
   //SPIFFS_close(&fs, fd1);
   //SPIFFS_fflush(&fs, fd1);
-  eRAM.f_close();
+  eRAM.f_close(fh);
   dtEND( "write");
 
   //  Serial.println("Directory contents:");
   //  eRAM.fs_listDir();
 
-  eRAM.f_open(fname1, SPIFFS_RDONLY);
+  eRAM.f_open(fh, fname1, SPIFFS_RDONLY);
   //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  eRAM.f_read(xData1, 2600);
+  eRAM.f_read(fh, xData1, 2600);
   //SPIFFS_close(&fs, fd);
-  eRAM.f_close();
+  eRAM.f_close(fh);
 
   dtSTART;
   for ( int ii = 0; ii < 100; ii++) {
@@ -337,11 +338,11 @@ void loopTest3R() {
   char fname1[32] = "loopTest3";
   dtSTART
 
-  eRAM.f_open(fname1, SPIFFS_RDONLY);
+  eRAM.f_open(fh, fname1, SPIFFS_RDONLY);
   //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  eRAM.f_read(xData1, 2600);
+  eRAM.f_read(fh, xData1, 2600);
   //SPIFFS_close(&fs, fd);
-  eRAM.f_close();
+  eRAM.f_close(fh);
   dtEND( "5 :: Loop Test5 - READ ONLY Verify Test");
 
   for ( int ii = 0; ii < 100; ii++) {

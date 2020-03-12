@@ -28,6 +28,7 @@ ILI9488_t3 tft = ILI9488_t3(&SPI, TFT_CS, TFT_DC, 8);
 
 #include <extRAM_t4.h>
 #include <spiffs.h>
+spiffs_file file1;
 
 extRAM_t4 eRAM;
 uint8_t config = 2; //0 - init eram only, 1-init flash only, 2-init both
@@ -52,9 +53,7 @@ void setup(void) {
   eRAM.begin(config, spiffs_region);
   eRAM.fs_mount();
   Serial.println("OK!");
-}
 
-void loop() {
   tft.fillScreen(ILI9488_BLACK);
   bmpDraw("9px_0000.bmp", 0, 0);
   delay(5000);
@@ -67,6 +66,10 @@ void loop() {
   tft.fillScreen(ILI9488_BLACK);
   bmpDraw("9px_0003.bmp", 0, 0);
   delay(5000);
+}
+
+void loop() {
+
 }
 
 // This function opens a Windows Bitmap (BMP) file and
@@ -90,7 +93,8 @@ void loop() {
 // Try Draw using writeRect
 void bmpDraw(const char *bmpFile, uint8_t x, uint16_t y) {
 
-  eRAM.f_open(bmpFile, SPIFFS_RDONLY);
+  eRAM.f_open(file1,bmpFile, SPIFFS_RDONLY);
+  Serial.println(file1);
   int      bmpWidth, bmpHeight;   // W+H in pixels
   uint8_t  bmpDepth;              // Bit depth (currently must be 24)
   uint32_t bmpImageoffset;        // Start of image data in file
@@ -170,15 +174,15 @@ void bmpDraw(const char *bmpFile, uint8_t x, uint16_t y) {
             pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
           else     // Bitmap is stored top-to-bottom
             pos = bmpImageoffset + row * rowSize;
-          if(position != pos) { // Need seek?
-            eRAM.f_seek(bmpFile, pos, SPIFFS_SEEK_SET);
+          if(eRAM.f_seek(file1, 0, SPIFFS_SEEK_CUR) != pos) { // Need seek?
+            eRAM.f_seek(file1, pos, SPIFFS_SEEK_SET);
             buffidx = sizeof(sdbuffer); // Force buffer reload
           }
 
           for (col=0; col<w; col++) { // For each pixel...
             // Time to read more pixel data?
             if (buffidx >= sizeof(sdbuffer)) { // Indeed
-              eRAM.f_read(sdbuffer, sizeof(sdbuffer));
+              eRAM.f_read(file1, sdbuffer, sizeof(sdbuffer));
               position += sizeof(sdbuffer);
               buffidx = 0; // Set index to beginning
             }
@@ -198,7 +202,7 @@ void bmpDraw(const char *bmpFile, uint8_t x, uint16_t y) {
     }
   }
 
-  eRAM.f_close();
+  eRAM.f_close(file1);
   if(!goodBmp) Serial.println(F("BMP format not recognized."));
 }
 
@@ -211,9 +215,9 @@ void bmpDraw(const char *bmpFile, uint8_t x, uint16_t y) {
 uint16_t read16() {
   uint16_t result;
   char buf[1];
-  eRAM.f_read(buf, 1); // LSB
+  eRAM.f_read(file1, buf, 1); // LSB
   ((uint8_t *)&result)[0] = buf[0];
-  eRAM.f_read(buf, 1); // MSB
+  eRAM.f_read(file1, buf, 1); // MSB
   ((uint8_t *)&result)[1] = buf[0];
   return result;
 }
@@ -221,13 +225,13 @@ uint16_t read16() {
 uint32_t read32() {
   uint32_t result;
   char buf[1];
-  eRAM.f_read(buf, 1); // LSB
+  eRAM.f_read(file1,buf, 1); // LSB
   ((uint8_t *)&result)[0] = buf[0];
-  eRAM.f_read(buf, 1);
+  eRAM.f_read(file1,buf, 1);
   ((uint8_t *)&result)[1] = buf[0];
-  eRAM.f_read(buf, 1);
+  eRAM.f_read(file1,buf, 1);
   ((uint8_t *)&result)[2] = buf[0];
-  eRAM.f_read(buf, 1); // MSB
+  eRAM.f_read(file1,buf, 1); // MSB
   ((uint8_t *)&result)[3] = buf[0];
   return result;
 }

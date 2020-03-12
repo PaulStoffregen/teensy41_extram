@@ -76,11 +76,17 @@ unsigned char *img = NULL;
 
 #include <extRAM_t4.h>
 #include <spiffs.h>
+spiffs_file file1;
 
 extRAM_t4 eRAM;
 uint8_t config = 2; //0 - init eram only, 1-init flash only, 2-init both
 uint8_t spiffs_region = 0;  //0 - flash, 1 - eram
 //2 - 2 4meg eram pseudo partitions
+
+elapsedMicros _dt;
+#define dtSTART {_dt=0;}
+#define dtEND(a) { Serial.printf( "\n%s()_%s : dt %ul us", __func__, a, (uint32_t)_dt);}
+// do dtSTART; and dtEND( "what") to show time
 
 void setup() {
   while (!Serial && (millis() < 4000)) ;
@@ -357,9 +363,12 @@ void saveBMP(){
     name[5] = (i/100)%10 + '0';     // hundreds
     name[6] = (i/10)%10 + '0';      // tens
     name[7] = i%10 + '0';           // ones
-    int file = eRAM.f_open(name, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR | SPIFFS_EXCL);
+    int file = eRAM.f_open(file1, name, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR | SPIFFS_EXCL);
+
     if (file !=  SPIFFS_ERR_FILE_EXISTS ) {
       break;
+    } else {
+      eRAM.f_close(file1);
     }
   }
 
@@ -416,14 +425,17 @@ void saveBMP(){
   bmpInfoHeader[11] = (unsigned char)(       h >> 24);
 
   // write the file (thanks forum!)
-  eRAM.f_write(bmpFileHeader, sizeof(bmpFileHeader));
-  eRAM.f_write(bmpInfoHeader, sizeof(bmpInfoHeader));
+  dtSTART;
+  eRAM.f_write(file1, bmpFileHeader, sizeof(bmpFileHeader));
+  eRAM.f_write(file1, bmpInfoHeader, sizeof(bmpInfoHeader));
   for (int i=0; i<h; i++) {                            // iterate image array
-    eRAM.f_write(img+(w*(h-i-1)*3), 3*w);                // write px data
-    eRAM.f_write(bmpPad, (4-(w*3)%4)%4);                 // and padding as needed
+    eRAM.f_write(file1, img+(w*(h-i-1)*3), 3*w);                // write px data
+    eRAM.f_write(file1, bmpPad, (4-(w*3)%4)%4);                 // and padding as needed
   }
+  dtEND( "0 :: Write Bitmap to SPIFF:");
+
   free(img);
-  eRAM.f_close_write();  // close file when done writing
+  eRAM.f_close_write(file1);  // close file when done writing
 
   Serial.println("Directory contents:");
   eRAM.fs_listDir();

@@ -23,7 +23,7 @@
 #include <Wire.h>
 
 #include <spiffs.h>
-  
+
 // Enabling debug I2C - comment to disable / normal operations
 #ifndef SERIAL_DEBUG
 //  #define SERIAL_DEBUG 1
@@ -60,7 +60,7 @@
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
-class extRAM_t4 : public Print
+class extRAM_t4 
 {
  public:
 	extRAM_t4();
@@ -101,21 +101,23 @@ class extRAM_t4 : public Print
 	static bool waitFlash(uint32_t timeout = 0);
 	void fs_listDir();
 	
-	int f_open(const char* fname, spiffs_flags flags);
-	void f_write(const char *dst, int szLen);
-	void f_read(const char *dst, int szLen);
-	void f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
-	void f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
+	int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);
+	int f_write(spiffs_file *fd, const char *dst, int szLen);
+	int f_read(spiffs_file *fd, const char *dst, int szLen);
+	int f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
+	int f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
 
-	void f_close_write();
-	void f_close();
+	int f_close_write(spiffs_file *fd);
+	void f_close(spiffs_file *fd);
 
-	int f_seek(const char* fname, int32_t offset, int start);
+	int f_seek(spiffs_file *fd ,int32_t offset, int start);
+	int f_rename(const char* fname_old, const char* fname_new);
+	int f_remove(const char* fname);
 
 	
 	// overwrite print functions:
-	virtual size_t write(uint8_t);
-	virtual size_t write(const uint8_t *buffer, size_t size);
+	//virtual size_t write(uint8_t);
+	//virtual size_t write(const uint8_t *buffer, size_t size);
 	
 	spiffs_file fd1;
 

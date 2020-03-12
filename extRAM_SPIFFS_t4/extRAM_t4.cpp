@@ -742,7 +742,7 @@ void extRAM_t4::fs_listDir() {
 }
 
 //Functions to Read/Write all buffered data and close file
-void extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flags) {
+int extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flags) {
 	int szLen = strlen( dst );
 
   // Surely, I've mounted spiffs before entering here
@@ -750,13 +750,15 @@ void extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags fla
   if (SPIFFS_write(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
+  return SPIFFS_errno(&fs);
 }
 
-void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
+int extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
   // Surely, I've mounted spiffs before entering here
   spiffs_file  fd = SPIFFS_open(&fs, fname, flags, 0);
   if (SPIFFS_read(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
+  return SPIFFS_errno(&fs);
 }
 
 //Basic wrapper functions to sppiff commands.
@@ -768,29 +770,38 @@ void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs
  *                      SPIFFS_APPEND, SPIFFS_O_TRUNC, SPIFFS_CREAT, SPIFFS_RDONLY,
  *                      SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
 **/
-int extRAM_t4::f_open(const char* fname, spiffs_flags flags){
-	spiffs_file fd = SPIFFS_open(&fs, fname, flags, 0);
+int extRAM_t4::f_open(spiffs_file &fd, const char* fname, spiffs_flags flags){
+	fd = SPIFFS_open(&fs, fname, flags, 0);
 	SPIFFS_errno(&fs);
 	fd1 = fd;
-	return fd;
-
+	return SPIFFS_errno(&fs);
 }
 
-void extRAM_t4::f_write(const char *dst, int szLen) {
-  if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+int extRAM_t4::f_write(spiffs_file *fd, const char *dst, int szLen) {
+	int res;
+	//if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+	res = SPIFFS_write(&fs, fd, (u8_t *)dst, szLen);
+	return res;
+	
 }
 
-void extRAM_t4::f_close_write(){
-  SPIFFS_close(&fs, fd1);
-  SPIFFS_fflush(&fs, fd1);
+int extRAM_t4::f_close_write(spiffs_file *fd){
+	int res;
+	res = SPIFFS_close(&fs, fd);
+	res = SPIFFS_fflush(&fs, fd);
+	return res;
 }
 
-void extRAM_t4::f_read(const char *dst, int szLen) {
-  if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+int extRAM_t4::f_read(spiffs_file *fd, const char *dst, int szLen) {
+	int res;
+	res = SPIFFS_read(&fs, fd, (u8_t *)dst, szLen);
+	//if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+	return res;
 }
 
-void extRAM_t4::f_close(){
-  SPIFFS_close(&fs, fd1);
+void extRAM_t4::f_close(spiffs_file *fd ){
+	SPIFFS_close(&fs, fd);
+
 }
 
 /**
@@ -804,9 +815,21 @@ void extRAM_t4::f_close(){
  *                      if SPIFFS_SEEK_END, the file offset shall be set to the size of the file plus offset, which should be negative
  */
 
-int extRAM_t4::f_seek(const char* fname, int32_t offset, int start){
+int extRAM_t4::f_seek(spiffs_file *fd, int32_t offset, int start){
 	int res;
-	res = SPIFFS_lseek(&fs, fname, offset, start);
+	res = SPIFFS_lseek(&fs, fd, offset, start);
+	return res;
+}
+
+int extRAM_t4::f_rename(const char* fname_old, const char* fname_new) {
+	int res;
+	res = SPIFFS_rename(&fs, fname_old, fname_new);
+	return res;
+}
+
+int extRAM_t4::f_remove(const char* fname) {
+	int res;
+	res = SPIFFS_remove(&fs, fname);
 	return res;
 }
 
@@ -907,15 +930,15 @@ static s32_t extRAM_t4::fs_erase(u32_t addr, u32_t size) {
 
 // overwrite functions from class Print:
 
-size_t extRAM_t4::write(uint8_t c) {
-	return write(&c, 1);
-}
+//size_t extRAM_t4::write(uint8_t c) {
+//	return write(&c, 1);
+//}
 
-size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
-{
-	f_write(buffer, size);
-	
-}
+//size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
+//{
+//	f_write(buffer, size);
+//	return 1;
+//}
 
 
 //********************************************************************************************************
