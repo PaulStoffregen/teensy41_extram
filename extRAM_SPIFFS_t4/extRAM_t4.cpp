@@ -29,6 +29,7 @@
 */
 /**************************************************************************/
 	static spiffs fs; //filesystem
+	spiffs_file fd1;
 	
 	uint8_t _spiffs_region;
 	static const uint32_t flashBaseAddr[3] = { 0x01000000u, 0x00000000u, 0x00000000u};
@@ -773,7 +774,7 @@ int extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_
 int extRAM_t4::f_open(spiffs_file &fd, const char* fname, spiffs_flags flags){
 	fd = SPIFFS_open(&fs, fname, flags, 0);
 	SPIFFS_errno(&fs);
-	fd1 = fd;
+	//fd1 = fd;
 	return SPIFFS_errno(&fs);
 }
 
@@ -830,6 +831,18 @@ int extRAM_t4::f_rename(const char* fname_old, const char* fname_new) {
 int extRAM_t4::f_remove(const char* fname) {
 	int res;
 	res = SPIFFS_remove(&fs, fname);
+	return res;
+}
+
+int32_t extRAM_t4::f_position(spiffs_file *fd ) { 
+	int res;
+	res = SPIFFS_tell(&fs, fd);
+	return res;
+}
+
+int extRAM_t4::f_eof(spiffs_file *fd ) {
+	int res;
+	res = SPIFFS_eof(&fs, fd);
 	return res;
 }
 
@@ -929,16 +942,19 @@ static s32_t extRAM_t4::fs_erase(u32_t addr, u32_t size) {
 }
 
 // overwrite functions from class Print:
+void extRAM_t4::printTo(spiffs_file *fd){
+	fd1 = fd;
+}
 
-//size_t extRAM_t4::write(uint8_t c) {
-//	return write(&c, 1);
-//}
+size_t extRAM_t4::write(uint8_t c) {
+	return write(&c, 1);
+}
 
-//size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
-//{
-//	f_write(buffer, size);
-//	return 1;
-//}
+size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
+{
+	f_write(fd1, buffer, size);
+	return 1;
+}
 
 
 //********************************************************************************************************

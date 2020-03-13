@@ -60,7 +60,7 @@
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
-class extRAM_t4 
+class extRAM_t4 : public Print
 {
  public:
 	extRAM_t4();
@@ -110,16 +110,19 @@ class extRAM_t4
 	int f_close_write(spiffs_file *fd);
 	void f_close(spiffs_file *fd);
 
+	int32_t f_position(spiffs_file *fd );
+	int f_eof( spiffs_file *fd );
 	int f_seek(spiffs_file *fd ,int32_t offset, int start);
 	int f_rename(const char* fname_old, const char* fname_new);
 	int f_remove(const char* fname);
 
 	
 	// overwrite print functions:
-	//virtual size_t write(uint8_t);
-	//virtual size_t write(const uint8_t *buffer, size_t size);
+	void printTo(spiffs_file *fd);
+	virtual size_t write(uint8_t);
+	virtual size_t write(const uint8_t *buffer, size_t size);
 	
-	spiffs_file fd1;
+
 
 
  private:
