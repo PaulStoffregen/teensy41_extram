@@ -70,8 +70,8 @@ class extRAM_t4 : public Print
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	toggleBit(uint32_t ramAddr, uint8_t bitNb);
 	
-	void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
-	void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
+	//void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
+	//void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	void	readArray (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	void	writeArray (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	
@@ -102,23 +102,23 @@ class extRAM_t4 : public Print
 	void fs_listDir();
 	
 	int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);
-	int f_write(spiffs_file *fd, const char *dst, int szLen);
-	int f_read(spiffs_file *fd, const char *dst, int szLen);
+	int f_write(spiffs_file fd, const char *dst, int szLen);
+	int f_read(spiffs_file fd, const char *dst, int szLen);
 	int f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
 	int f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
 
-	int f_close_write(spiffs_file *fd);
-	void f_close(spiffs_file *fd);
+	int f_close_write(spiffs_file fd);
+	void f_close(spiffs_file fd);
 
-	int32_t f_position(spiffs_file *fd );
-	int f_eof( spiffs_file *fd );
-	int f_seek(spiffs_file *fd ,int32_t offset, int start);
+	int32_t f_position(spiffs_file fd );
+	int f_eof( spiffs_file fd );
+	int f_seek(spiffs_file fd ,int32_t offset, int start);
 	int f_rename(const char* fname_old, const char* fname_new);
 	int f_remove(const char* fname);
 
 	
 	// overwrite print functions:
-	void printTo(spiffs_file *fd);
+	void printTo(spiffs_file fd);
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	

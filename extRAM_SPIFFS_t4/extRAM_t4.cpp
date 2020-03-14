@@ -286,16 +286,16 @@ void extRAM_t4::printStatusRegs() {
 
 */
 /**************************************************************************/
-void extRAM_t4::writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t values[])
-{ 
+//void extRAM_t4::writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t values[])
+//{ 
   //Serial.printf("write @%06X:", ramAddr);
   //for (uint32_t i=0; i < items; i++) Serial.printf(" %02X", *(((uint8_t *)values) + i));
   //Serial.printf("\n");
   //uint32_t timenow = micros();
-  flexspi_ip_write(6, ramAddr, values, items);
+//  flexspi_ip_write(6, ramAddr, values, items);
   //Serial.printf("Write (us): %d\n", micros()-timenow);
 
-}
+//}
 
 void extRAM_t4::writeArray (uint32_t ramAddr, uint32_t items, uint8_t values[])
 { 
@@ -336,27 +336,27 @@ void extRAM_t4::writeByte (uint32_t ramAddr, uint8_t value)
 
 */
 /**************************************************************************/
-void extRAM_t4::readArray_old (uint32_t ramAddr, uint32_t length, uint8_t data[])
-{
+//void extRAM_t4::readArray_old (uint32_t ramAddr, uint32_t length, uint8_t data[])
+//{
 	//if ((ramAddr >= maxaddress) || ((ramAddr + (uint16_t) items - 1) >= maxaddress)) rvoid readArray (uint16_t ramAddr, uint32_t length, uint8_t *data)
 
-  uint8_t *p = (uint8_t *)(0x70000000 + ramAddr);
-  arm_dcache_flush(p, sizeof(data));
-  memset(data, 0xFF, sizeof(data));
+//  uint8_t *p = (uint8_t *)(0x70000000 + ramAddr);
+//  arm_dcache_flush(p, sizeof(data));
+//  memset(data, 0xFF, sizeof(data));
 
   //uint32_t timenow = micros();
-  flexspi_ip_read(5, ramAddr, data, length);
+//  flexspi_ip_read(5, ramAddr, data, length);
   //Serial.printf("Read (us): %d\n", micros()-timenow);
 
   //Serial.printf("read @%06X: ", ramAddr);
   //for (uint32_t i=0; i < length; i++) Serial.printf(" %02X", *(((uint8_t *)data) + i));
   //Serial.printf("\n");
-  arm_dcache_delete(p, length);
+//  arm_dcache_delete(p, length);
   //Serial.printf("rd @%08X: ", (uint32_t)p);
   //for (uint32_t i=0; i < length; i++) Serial.printf(" %02X", p[i]);
   //Serial.printf("\n");
 
-}
+//}
 
 void extRAM_t4::readArray (uint32_t ramAddr, uint32_t length, uint8_t *data)
 {
@@ -778,7 +778,7 @@ int extRAM_t4::f_open(spiffs_file &fd, const char* fname, spiffs_flags flags){
 	return SPIFFS_errno(&fs);
 }
 
-int extRAM_t4::f_write(spiffs_file *fd, const char *dst, int szLen) {
+int extRAM_t4::f_write(spiffs_file fd, const char *dst, int szLen) {
 	int res;
 	//if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
 	res = SPIFFS_write(&fs, fd, (u8_t *)dst, szLen);
@@ -786,21 +786,21 @@ int extRAM_t4::f_write(spiffs_file *fd, const char *dst, int szLen) {
 	
 }
 
-int extRAM_t4::f_close_write(spiffs_file *fd){
+int extRAM_t4::f_close_write(spiffs_file fd){
 	int res;
 	res = SPIFFS_close(&fs, fd);
 	res = SPIFFS_fflush(&fs, fd);
 	return res;
 }
 
-int extRAM_t4::f_read(spiffs_file *fd, const char *dst, int szLen) {
+int extRAM_t4::f_read(spiffs_file fd, const char *dst, int szLen) {
 	int res;
 	res = SPIFFS_read(&fs, fd, (u8_t *)dst, szLen);
 	//if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
 	return res;
 }
 
-void extRAM_t4::f_close(spiffs_file *fd ){
+void extRAM_t4::f_close(spiffs_file fd ){
 	SPIFFS_close(&fs, fd);
 
 }
@@ -816,7 +816,7 @@ void extRAM_t4::f_close(spiffs_file *fd ){
  *                      if SPIFFS_SEEK_END, the file offset shall be set to the size of the file plus offset, which should be negative
  */
 
-int extRAM_t4::f_seek(spiffs_file *fd, int32_t offset, int start){
+int extRAM_t4::f_seek(spiffs_file fd, int32_t offset, int start){
 	int res;
 	res = SPIFFS_lseek(&fs, fd, offset, start);
 	return res;
@@ -834,13 +834,13 @@ int extRAM_t4::f_remove(const char* fname) {
 	return res;
 }
 
-int32_t extRAM_t4::f_position(spiffs_file *fd ) { 
+int32_t extRAM_t4::f_position(spiffs_file fd ) { 
 	int res;
 	res = SPIFFS_tell(&fs, fd);
 	return res;
 }
 
-int extRAM_t4::f_eof(spiffs_file *fd ) {
+int extRAM_t4::f_eof(spiffs_file fd ) {
 	int res;
 	res = SPIFFS_eof(&fs, fd);
 	return res;
@@ -942,7 +942,7 @@ static s32_t extRAM_t4::fs_erase(u32_t addr, u32_t size) {
 }
 
 // overwrite functions from class Print:
-void extRAM_t4::printTo(spiffs_file *fd){
+void extRAM_t4::printTo(spiffs_file fd){
 	fd1 = fd;
 }
 
