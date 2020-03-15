@@ -48,11 +48,29 @@ extRAM_t4::extRAM_t4()
 /*                           PUBLIC FUNCTIONS                             */
 /*========================================================================*/
 
-int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
-	  _spiffs_region = spiffs_region;
-
+//int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
+int8_t extRAM_t4::begin(uint8_t _config) {
+	uint8_t config;
 	  memset(flashID, 0, sizeof(flashID));
-	  int8_t result = 0;
+	  uint8_t result = 0;
+	
+	if(_config == 0){
+		config = 0;
+		_spiffs_region = 1;
+		result = 1;
+	} else if (_config == 1) {
+		config = 1;
+		_spiffs_region = 0;
+		result = 0;
+	} else {
+		config = 2;
+		_spiffs_region = 0;
+		result = 0;
+	}
+
+	 // _spiffs_region = spiffs_region;
+
+
 	  // initialize pins
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_22 = 0xB0E1; // 100K pullup, medium drive, max speed
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_23 = 0x10E1; // keeper, medium drive, max speed
@@ -190,7 +208,7 @@ int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 			result = -1;
 		  } else {
 			Serial.println("Device found!");
-			result = 0;
+			//result = 0;
 		  }
 		  // configure for memory mapping
 		  flexspi_ip_command(4, 0);
@@ -255,8 +273,8 @@ int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 
 		  printStatusRegs();
 		  
-		  result = 0;
 	  }
+	  
 	  
 	return result;
 
@@ -844,6 +862,16 @@ int extRAM_t4::f_eof(spiffs_file fd ) {
 	int res;
 	res = SPIFFS_eof(&fs, fd);
 	return res;
+}
+
+/**
+ * Gets file status by path
+ * @param fs            the file system struct
+ * @param path          the path of the file to stat
+ * @param s             the stat struct to populate
+ */
+void extRAM_t4::f_info(const char* fname, spiffs_stat *s){
+	SPIFFS_stat(&fs, fname, s);
 }
 
 /*

@@ -57,6 +57,10 @@
 #define ERROR_11 11 // Memory address out of range
 
 
+#define INIT_PSRAM_ONLY		0
+#define INIT_FLASH_ONLY		1
+#define INIT_PSRM_FLASH		2
+
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
@@ -64,7 +68,8 @@ class extRAM_t4 : public Print
 {
  public:
 	extRAM_t4();
-	int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
+	//int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
+	int8_t  begin(uint8_t _config);
 	byte	readBit(uint32_t ramAddr, uint8_t bitNb, byte *bit);
 	byte	setOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
@@ -115,6 +120,8 @@ class extRAM_t4 : public Print
 	int f_seek(spiffs_file fd ,int32_t offset, int start);
 	int f_rename(const char* fname_old, const char* fname_new);
 	int f_remove(const char* fname);
+	void f_info(const char* fname, spiffs_stat *s);
+
 
 	
 	// overwrite print functions:

@@ -29,10 +29,13 @@ char buf1[64] = "";
 int blocks, remainBytes;
 
 extRAM_t4 eRAM;
-uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-uint8_t spiffs_region = 1; //0 - flash, 1 - eram
+//uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
+//uint8_t spiffs_region = 1; //0 - flash, 1 - eram
                            //2 - 2 4meg eram pseudo partitions
-
+//These have been replaced with defines for:
+//INIT_PSRAM_ONLY
+//INIT_FLASH_ONLY
+//INIT_FLASH_PSRAM
 
 void setup(){
   Serial.begin(115200);
@@ -48,7 +51,7 @@ void setup(){
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(config, spiffs_region);
+  eRAM.begin(INIT_PSRAM_ONLY);
   eRAM.fs_mount();
 
   Serial.println();

@@ -7,9 +7,13 @@ spiffs_file file2;
 spiffs_file file3;
 
 extRAM_t4 eRAM;
-uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-uint8_t spiffs_region = 1; //0 - flash, 1 - eram
+//uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
+//uint8_t spiffs_region = 1; //0 - flash, 1 - eram
                            //2 - 2 4meg eram pseudo partitions
+//These have been replaced with defines for:
+//INIT_PSRAM_ONLY
+//INIT_FLASH_ONLY
+//INIT_FLASH_PSRAM
 
 char buf[1024] = "";
 char fname[32] = "my_file1";
@@ -17,7 +21,7 @@ int szLen = strlen( buf );
 elapsedMicros my_us;
 
 //define a struct of various data types
-typedef struct MYDATA_t {
+ struct MYDATA_t {
   bool data_0;
   float data_1; 
   long data_2; 
@@ -26,9 +30,9 @@ typedef struct MYDATA_t {
 };
 
 //define a struct joining MYDATA_t to an array of bytes to be stored
-typedef union MYDATA4RAM_t {
+ union MYDATA4RAM_t {
  MYDATA_t datastruct;
- uint8_t Packet[sizeof(MYDATA_t)];
+ char Packet[sizeof(MYDATA_t)];
 };
 
 MYDATA4RAM_t mydata; //data to be written in memory
@@ -53,8 +57,8 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    eRAM.begin(config, spiffs_region);
-    if(spiffs_region == 0){
+    int8_t result = eRAM.begin(INIT_PSRAM_ONLY);
+    if(result == 0){
       eRAM.eraseFlashChip();
     } else {
       eRAM.eraseDevice();
@@ -64,7 +68,7 @@ void setup() {
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(config, spiffs_region);
+  eRAM.begin(INIT_PSRAM_ONLY);
   eRAM.fs_mount();
 
   Serial.println();
