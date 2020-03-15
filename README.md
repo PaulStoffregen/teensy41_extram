@@ -18,10 +18,13 @@ spiffs_file file2;
 spiffs_file file3;
 
 extRAM_t4 eRAM;
-uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-uint8_t spiffs_region = 1; //0 - flash, 1 - eram
+//uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
+//uint8_t spiffs_region = 1; //0 - flash, 1 - eram
                            //2 - 2 4meg eram pseudo partitions```
-                           
+//These have been replaced with defines for:
+//INIT_PSRAM_ONLY
+//INIT_FLASH_ONLY
+//INIT_FLASH_PSRAM                           
 
 2. In setup
 ```c++
@@ -41,8 +44,8 @@ uint8_t spiffs_region = 1; //0 - flash, 1 - eram
     }
   }
   if ( chIn == 'y' ) {
-    eRAM.begin(config, spiffs_region);
-    if(spiffs_region == 0){
+    int8_t result = eRAM.begin(INIT_PSRAM_ONLY);
+    if(result == 0){
       eRAM.eraseFlashChip();
     } else {
       eRAM.eraseDevice();
