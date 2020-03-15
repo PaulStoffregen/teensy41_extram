@@ -60,6 +60,7 @@
 #define INIT_PSRAM_ONLY		0
 #define INIT_FLASH_ONLY		1
 #define INIT_PSRM_FLASH		2
+#define INIT_PSRAM_PART		3
 
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 

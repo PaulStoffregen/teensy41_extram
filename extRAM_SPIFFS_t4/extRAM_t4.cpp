@@ -62,6 +62,10 @@ int8_t extRAM_t4::begin(uint8_t _config) {
 		config = 1;
 		_spiffs_region = 0;
 		result = 0;
+	} else if (_config == 0) {
+		config = 1;
+		_spiffs_region = 2;
+		result = 0;		
 	} else {
 		config = 2;
 		_spiffs_region = 0;

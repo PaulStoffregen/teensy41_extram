@@ -35,7 +35,7 @@ void setup() {
   
   Serial.println("Starting...");
     
-  mymemory.begin();
+  mymemory.begin(INIT_PSRAM_ONLY);
 
   //.........................
 //---------init data - load array
