@@ -42,7 +42,15 @@ spiffs_file file;
 
 #define USE_SPI1
 #if defined(USE_SPI1)
-#if defined(__IMXRT1062__)  // Teensy 4.x 
+#ifdef ARDUINO_TEENSY41
+#define TFT_DC 38
+#define TFT_CS  37
+#define TFT_RST 36
+
+#define TFT_SCK 27
+#define TFT_MISO 39
+#define TFT_MOSI 26
+#elif defined(ARDUINO_TEENSY40)
 #define TFT_DC 2
 #define TFT_CS  0
 #define TFT_RST 3
@@ -100,7 +108,7 @@ void setup() {
 
   tft.setFrameBuffer(extmem_frame_buffer);
   tft.setRotation(ROTATION);
-  eRAM.begin(0);
+  eRAM.begin(INIT_PSRAM_ONLY);
   tft.useFrameBuffer(true);
   tft.fillScreen(ILI9488_BLACK);
   tft.setCursor(ILI9488_t3::CENTER, ILI9488_t3::CENTER);
@@ -133,7 +141,7 @@ void setup() {
   }
   if ( chIn == 'y' ) {
     int8_t result = eRAM.begin(INIT_PSRAM_ONLY);
-    if(result == 0){
+    if (result == 0) {
       eRAM.eraseFlashChip();
     } else {
       eRAM.eraseDevice();
