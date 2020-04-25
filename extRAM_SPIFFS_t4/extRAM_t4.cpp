@@ -74,7 +74,6 @@ int8_t extRAM_t4::begin(uint8_t _config) {
 
 	 // _spiffs_region = spiffs_region;
 
-
 	  // initialize pins
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_22 = 0xB0E1; // 100K pullup, medium drive, max speed
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_23 = 0x10E1; // keeper, medium drive, max speed
@@ -876,6 +875,7 @@ int extRAM_t4::f_eof(spiffs_file fd ) {
  */
 void extRAM_t4::f_info(const char* fname, spiffs_stat *s){
 	SPIFFS_stat(&fs, fname, s);
+
 }
 
 /*
@@ -916,6 +916,17 @@ void extRAM_t4::eraseFlashChip() {
 
 //********************************************************************************************************
 //********************************************************************************************************
+
+size_t extRAM_t4::write(uint8_t c) {
+	return write(&c, 1);
+}
+
+size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
+{
+	f_write(buffer, size);
+}
+
+
 //********************************************************************************************************
 /*
    SPIFFS interface
