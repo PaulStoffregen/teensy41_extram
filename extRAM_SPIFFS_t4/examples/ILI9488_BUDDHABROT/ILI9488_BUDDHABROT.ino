@@ -27,6 +27,8 @@ www.jeffreythompson.org
 #include <ili9488_t3_font_Arial.h>
 #include <ILI9488_t3.h>
 
+
+//#define ENABLE_EXT_DMA_UPDATES in the ILI9488_t3.h file
 #define TRY_EXTMEM
 //#define UPDATE_HALF_FRAME
 
