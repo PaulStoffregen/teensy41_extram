@@ -62,6 +62,7 @@
 #define INIT_PSRM_FLASH		2
 #define INIT_PSRAM_PART		3
 
+
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
@@ -78,6 +79,7 @@ class extRAM_t4 : public Print
 	
 	//void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	//void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
+
 	void	readArray (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	void	writeArray (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	
@@ -107,7 +109,7 @@ class extRAM_t4 : public Print
 	static bool waitFlash(uint32_t timeout = 0);
 	void fs_listDir();
 	
-	int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);
+  int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);
 	int f_write(spiffs_file fd, const char *dst, int szLen);
 	int f_read(spiffs_file fd, const char *dst, int szLen);
 	int f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
@@ -123,15 +125,12 @@ class extRAM_t4 : public Print
 	int f_remove(const char* fname);
 	void f_info(const char* fname, spiffs_stat *s);
 
-
-	
 	// overwrite print functions:
 	void printTo(spiffs_file fd);
+
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	
-
-
 
  private:
 	
