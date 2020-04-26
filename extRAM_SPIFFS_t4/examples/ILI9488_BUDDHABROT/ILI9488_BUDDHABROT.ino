@@ -85,8 +85,8 @@ extRAM_t4 eRAM;
 //These have been replaced with defines for:
 //INIT_PSRAM_ONLY
 //INIT_FLASH_ONLY
-//INIT_FLASH_PSRAM
-
+//INIT_PSRM_FLASH
+uint8_t config = INIT_PSRAM_ONLY;
 
 elapsedMicros _dt;
 #define dtSTART {_dt=0;}
@@ -103,7 +103,7 @@ void setup() {
   tft.setFrameBuffer(extmem_frame_buffer);
   tft.setRotation(ROTATION);
   
-  eRAM.begin(INIT_PSRAM_ONLY);
+  eRAM.begin(config);
 
 #if 1
   Serial.println("\n Enter 'y' in 6 seconds to format FlashChip - other to skip");
@@ -132,7 +132,7 @@ void setup() {
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(config, spiffs_region);
+  eRAM.begin(config);
   eRAM.fs_mount();
 
   
@@ -217,8 +217,8 @@ void frame_callback() {
       CCdiff = ARM_DWT_CYCCNT - CCdiff;
       renderBrot();
 
-      if(timeBMP % 4 == 0)
-                saveBMP();
+      //if(timeBMP % 4 == 0)
+                //saveBMP();
       
       // show exposure value
       tft.setFont(Arial_10);

@@ -15,6 +15,8 @@ extRAM_t4 eRAM;
 //INIT_FLASH_ONLY
 //INIT_FLASH_PSRAM
 
+uint8_t config = INIT_PSRAM_ONLY;
+
 char buf[1024] = "";
 char fname[32] = "my_file1";
 int szLen = strlen( buf );
@@ -57,7 +59,7 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    int8_t result = eRAM.begin(INIT_PSRAM_ONLY);
+    int8_t result = eRAM.begin(config);
     if(result == 0){
       eRAM.eraseFlashChip();
     } else {
@@ -68,7 +70,7 @@ void setup() {
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(INIT_PSRAM_ONLY);
+  eRAM.begin(config);
   eRAM.fs_mount();
 
   Serial.println();
