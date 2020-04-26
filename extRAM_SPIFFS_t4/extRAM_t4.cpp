@@ -29,6 +29,7 @@
 */
 /**************************************************************************/
 	static spiffs fs; //filesystem
+	spiffs_file fd1;
 	
 	uint8_t _spiffs_region;
 	static const uint32_t flashBaseAddr[3] = { 0x01000000u, 0x00000000u, 0x00000000u};
@@ -38,7 +39,7 @@
 	//4meg = 4,194,304‬bytes
 	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u, 8u * 1024u * 1024u, 4194305u};
 	
-extRAM_t4::extRAM_t4() 
+extRAM_t4::extRAM_t4()
 {
 
 }
@@ -47,11 +48,33 @@ extRAM_t4::extRAM_t4()
 /*                           PUBLIC FUNCTIONS                             */
 /*========================================================================*/
 
-int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
-	  _spiffs_region = spiffs_region;
-
+//int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
+int8_t extRAM_t4::begin(uint8_t _config) {
+	uint8_t config;
 	  memset(flashID, 0, sizeof(flashID));
-	  int8_t result = 0;
+	  uint8_t result = 0;
+	
+	if(_config == 0){
+		config = 0;
+		_spiffs_region = 1;
+		result = 1;
+	} else if (_config == 1) {
+		config = 1;
+		_spiffs_region = 0;
+		result = 0;
+	} else if (_config == 0) {
+		config = 1;
+		_spiffs_region = 2;
+		result = 0;		
+	} else {
+		config = 2;
+		_spiffs_region = 0;
+		result = 0;
+	}
+
+	 // _spiffs_region = spiffs_region;
+
+
 	  // initialize pins
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_22 = 0xB0E1; // 100K pullup, medium drive, max speed
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_23 = 0x10E1; // keeper, medium drive, max speed
@@ -189,7 +212,7 @@ int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 			result = -1;
 		  } else {
 			Serial.println("Device found!");
-			result = 0;
+			//result = 0;
 		  }
 		  // configure for memory mapping
 		  flexspi_ip_command(4, 0);
@@ -254,8 +277,8 @@ int8_t extRAM_t4::begin(uint8_t config, uint8_t spiffs_region) {
 
 		  printStatusRegs();
 		  
-		  result = 0;
 	  }
+	  
 	  
 	return result;
 
@@ -285,16 +308,16 @@ void extRAM_t4::printStatusRegs() {
 
 */
 /**************************************************************************/
-void extRAM_t4::writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t values[])
-{ 
+//void extRAM_t4::writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t values[])
+//{ 
   //Serial.printf("write @%06X:", ramAddr);
   //for (uint32_t i=0; i < items; i++) Serial.printf(" %02X", *(((uint8_t *)values) + i));
   //Serial.printf("\n");
   //uint32_t timenow = micros();
-  flexspi_ip_write(6, ramAddr, values, items);
+//  flexspi_ip_write(6, ramAddr, values, items);
   //Serial.printf("Write (us): %d\n", micros()-timenow);
 
-}
+//}
 
 void extRAM_t4::writeArray (uint32_t ramAddr, uint32_t items, uint8_t values[])
 { 
@@ -335,27 +358,27 @@ void extRAM_t4::writeByte (uint32_t ramAddr, uint8_t value)
 
 */
 /**************************************************************************/
-void extRAM_t4::readArray_old (uint32_t ramAddr, uint32_t length, uint8_t data[])
-{
+//void extRAM_t4::readArray_old (uint32_t ramAddr, uint32_t length, uint8_t data[])
+//{
 	//if ((ramAddr >= maxaddress) || ((ramAddr + (uint16_t) items - 1) >= maxaddress)) rvoid readArray (uint16_t ramAddr, uint32_t length, uint8_t *data)
 
-  uint8_t *p = (uint8_t *)(0x70000000 + ramAddr);
-  arm_dcache_flush(p, sizeof(data));
-  memset(data, 0xFF, sizeof(data));
+//  uint8_t *p = (uint8_t *)(0x70000000 + ramAddr);
+//  arm_dcache_flush(p, sizeof(data));
+//  memset(data, 0xFF, sizeof(data));
 
   //uint32_t timenow = micros();
-  flexspi_ip_read(5, ramAddr, data, length);
+//  flexspi_ip_read(5, ramAddr, data, length);
   //Serial.printf("Read (us): %d\n", micros()-timenow);
 
   //Serial.printf("read @%06X: ", ramAddr);
   //for (uint32_t i=0; i < length; i++) Serial.printf(" %02X", *(((uint8_t *)data) + i));
   //Serial.printf("\n");
-  arm_dcache_delete(p, length);
+//  arm_dcache_delete(p, length);
   //Serial.printf("rd @%08X: ", (uint32_t)p);
   //for (uint32_t i=0; i < length; i++) Serial.printf(" %02X", p[i]);
   //Serial.printf("\n");
 
-}
+//}
 
 void extRAM_t4::readArray (uint32_t ramAddr, uint32_t length, uint8_t *data)
 {
@@ -742,7 +765,7 @@ void extRAM_t4::fs_listDir() {
 }
 
 //Functions to Read/Write all buffered data and close file
-void extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flags) {
+int extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flags) {
 	int szLen = strlen( dst );
 
   // Surely, I've mounted spiffs before entering here
@@ -750,13 +773,15 @@ void extRAM_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags fla
   if (SPIFFS_write(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
+  return SPIFFS_errno(&fs);
 }
 
-void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
+int extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
   // Surely, I've mounted spiffs before entering here
   spiffs_file  fd = SPIFFS_open(&fs, fname, flags, 0);
   if (SPIFFS_read(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
+  return SPIFFS_errno(&fs);
 }
 
 //Basic wrapper functions to sppiff commands.
@@ -768,28 +793,89 @@ void extRAM_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs
  *                      SPIFFS_APPEND, SPIFFS_O_TRUNC, SPIFFS_CREAT, SPIFFS_RDONLY,
  *                      SPIFFS_WRONLY, SPIFFS_RDWR, SPIFFS_DIRECT, SPIFFS_EXCL
 **/
-void extRAM_t4::f_open(const char* fname, spiffs_flags flags){
-	spiffs_file fd = SPIFFS_open(&fs, fname, flags, 0);
+int extRAM_t4::f_open(spiffs_file &fd, const char* fname, spiffs_flags flags){
+	fd = SPIFFS_open(&fs, fname, flags, 0);
 	SPIFFS_errno(&fs);
-	fd1 = fd;
+	//fd1 = fd;
+	return SPIFFS_errno(&fs);
+}
+
+int extRAM_t4::f_write(spiffs_file fd, const char *dst, int szLen) {
+	int res;
+	//if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+	res = SPIFFS_write(&fs, fd, (u8_t *)dst, szLen);
+	return res;
+	
+}
+
+int extRAM_t4::f_close_write(spiffs_file fd){
+	int res;
+	res = SPIFFS_close(&fs, fd);
+	res = SPIFFS_fflush(&fs, fd);
+	return res;
+}
+
+int extRAM_t4::f_read(spiffs_file fd, const char *dst, int szLen) {
+	int res;
+	res = SPIFFS_read(&fs, fd, (u8_t *)dst, szLen);
+	//if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+	return res;
+}
+
+void extRAM_t4::f_close(spiffs_file fd ){
+	SPIFFS_close(&fs, fd);
 
 }
 
-void extRAM_t4::f_write(const char *dst, int szLen) {
-  if (SPIFFS_write(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+/**
+ * Moves the read/write file offset. Resulting offset is returned or negative if error.
+ * lseek(fs, fd, 0, SPIFFS_SEEK_CUR) will thus return current offset.
+ * @param fs            the file system struct
+ * @param fh            the filehandle
+ * @param offs          how much/where to move the offset
+ * @param whence        if SPIFFS_SEEK_SET, the file offset shall be set to offset bytes
+ *                      if SPIFFS_SEEK_CUR, the file offset shall be set to its current location plus offset
+ *                      if SPIFFS_SEEK_END, the file offset shall be set to the size of the file plus offset, which should be negative
+ */
+
+int extRAM_t4::f_seek(spiffs_file fd, int32_t offset, int start){
+	int res;
+	res = SPIFFS_lseek(&fs, fd, offset, start);
+	return res;
 }
 
-void extRAM_t4::f_close_write(){
-  SPIFFS_close(&fs, fd1);
-  SPIFFS_fflush(&fs, fd1);
+int extRAM_t4::f_rename(const char* fname_old, const char* fname_new) {
+	int res;
+	res = SPIFFS_rename(&fs, fname_old, fname_new);
+	return res;
 }
 
-void extRAM_t4::f_read(const char *dst, int szLen) {
-  if (SPIFFS_read(&fs, fd1, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+int extRAM_t4::f_remove(const char* fname) {
+	int res;
+	res = SPIFFS_remove(&fs, fname);
+	return res;
 }
 
-void extRAM_t4::f_close(){
-  SPIFFS_close(&fs, fd1);
+int32_t extRAM_t4::f_position(spiffs_file fd ) { 
+	int res;
+	res = SPIFFS_tell(&fs, fd);
+	return res;
+}
+
+int extRAM_t4::f_eof(spiffs_file fd ) {
+	int res;
+	res = SPIFFS_eof(&fs, fd);
+	return res;
+}
+
+/**
+ * Gets file status by path
+ * @param fs            the file system struct
+ * @param path          the path of the file to stat
+ * @param s             the stat struct to populate
+ */
+void extRAM_t4::f_info(const char* fname, spiffs_stat *s){
+	SPIFFS_stat(&fs, fname, s);
 }
 
 /*
@@ -830,17 +916,6 @@ void extRAM_t4::eraseFlashChip() {
 
 //********************************************************************************************************
 //********************************************************************************************************
-
-size_t extRAM_t4::write(uint8_t c) {
-	return write(&c, 1);
-}
-
-size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
-{
-	f_write(buffer, size);
-}
-
-
 //********************************************************************************************************
 /*
    SPIFFS interface
@@ -897,6 +972,22 @@ static s32_t extRAM_t4::fs_erase(u32_t addr, u32_t size) {
   }
   return SPIFFS_OK;
 }
+
+// overwrite functions from class Print:
+void extRAM_t4::printTo(spiffs_file fd){
+	fd1 = fd;
+}
+
+size_t extRAM_t4::write(uint8_t c) {
+	return write(&c, 1);
+}
+
+size_t extRAM_t4::write(const uint8_t *buffer, size_t size)
+{
+	f_write(fd1, buffer, size);
+	return 1;
+}
+
 
 //********************************************************************************************************
 

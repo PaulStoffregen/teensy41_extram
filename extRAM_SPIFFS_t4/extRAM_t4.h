@@ -23,7 +23,7 @@
 #include <Wire.h>
 
 #include <spiffs.h>
-  
+
 // Enabling debug I2C - comment to disable / normal operations
 #ifndef SERIAL_DEBUG
 //  #define SERIAL_DEBUG 1
@@ -57,6 +57,11 @@
 #define ERROR_11 11 // Memory address out of range
 
 
+#define INIT_PSRAM_ONLY		0
+#define INIT_FLASH_ONLY		1
+#define INIT_PSRM_FLASH		2
+#define INIT_PSRAM_PART		3
+
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
 
@@ -64,14 +69,15 @@ class extRAM_t4 : public Print
 {
  public:
 	extRAM_t4();
-	int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
+	//int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
+	int8_t  begin(uint8_t _config);
 	byte	readBit(uint32_t ramAddr, uint8_t bitNb, byte *bit);
 	byte	setOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	clearOneBit(uint32_t ramAddr, uint8_t bitNb);
 	byte	toggleBit(uint32_t ramAddr, uint8_t bitNb);
 	
-	void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
-	void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
+	//void	readArray_old (uint32_t ramAddr, uint32_t items, uint8_t data[]);
+	//void	writeArray_old (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	void	readArray (uint32_t ramAddr, uint32_t items, uint8_t data[]);
 	void	writeArray (uint32_t ramAddr, uint32_t items, uint8_t value[]);
 	
@@ -101,20 +107,30 @@ class extRAM_t4 : public Print
 	static bool waitFlash(uint32_t timeout = 0);
 	void fs_listDir();
 	
-	void f_open(const char* fname, spiffs_flags flags);
-	void f_write(const char *dst, int szLen);
-	void f_read(const char *dst, int szLen);
-	void f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
-	void f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
+	int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);
+	int f_write(spiffs_file fd, const char *dst, int szLen);
+	int f_read(spiffs_file fd, const char *dst, int szLen);
+	int f_writeFile(const char* fname, const char *dst, spiffs_flags flags);
+	int f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags);
 
-	void f_close_write();
-	void f_close();
+	int f_close_write(spiffs_file fd);
+	void f_close(spiffs_file fd);
 
+	int32_t f_position(spiffs_file fd );
+	int f_eof( spiffs_file fd );
+	int f_seek(spiffs_file fd ,int32_t offset, int start);
+	int f_rename(const char* fname_old, const char* fname_new);
+	int f_remove(const char* fname);
+	void f_info(const char* fname, spiffs_stat *s);
+
+
+	
 	// overwrite print functions:
+	void printTo(spiffs_file fd);
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	
-	spiffs_file fd1;
+
 
 
  private:
