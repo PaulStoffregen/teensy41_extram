@@ -24,7 +24,7 @@ extRAM_t4 eRAM;
 //INIT_FLASH_ONLY
 //INIT_PSRM_FLASH
 
-uint8_t config = PSRAM_ONLY;
+uint8_t config = INIT_PSRAM_ONLY;
 
 //#define DO_DEBUG 1
 
