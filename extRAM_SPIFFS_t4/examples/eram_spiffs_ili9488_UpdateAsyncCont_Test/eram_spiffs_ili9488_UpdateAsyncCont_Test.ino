@@ -27,7 +27,7 @@ spiffs_file file;
 //These have been replaced with defines for:
 //INIT_PSRAM_ONLY
 //INIT_FLASH_ONLY
-//INIT_FLASH_PSRAM
+//INIT_PSRM_FLASH
 
 
 #include <ili9488_t3_font_ArialBold.h>
@@ -40,7 +40,7 @@ spiffs_file file;
 
 #include "SPI.h"
 
-#define USE_SPI1
+//#define USE_SPI1
 #if defined(USE_SPI1)
 #ifdef ARDUINO_TEENSY41
 #define TFT_DC 38
@@ -108,7 +108,7 @@ void setup() {
 
   tft.setFrameBuffer(extmem_frame_buffer);
   tft.setRotation(ROTATION);
-  eRAM.begin(INIT_PSRAM_ONLY);
+  eRAM.begin(INIT_PSRM_FLASH);
   tft.useFrameBuffer(true);
   tft.fillScreen(ILI9488_BLACK);
   tft.setCursor(ILI9488_t3::CENTER, ILI9488_t3::CENTER);
