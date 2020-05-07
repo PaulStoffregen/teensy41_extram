@@ -89,20 +89,83 @@ void setup() {
   eRAM.fs_mount();
   Serial.println("Directory contents:");
   eRAM.fs_listDir();
+  Serial.println("'ENTER' '2' for Loop Test2");
 }
 
 void loop() {
   char chIn = 9;
   if ( Serial.available() ) {
     do {
-      if ( chIn != 'y' )
+      if ( chIn != '2' )
         chIn = Serial.read();
       else
         Serial.read();
     }
     while ( Serial.available() );
   }
-  if ( chIn == 'y' ) {
+  if ( chIn == '2' ) {
+    Serial.println();
+    Serial.println("Loop Test2");
+    loopTest2();
   }
 }
 
+
+void loopTest2() {
+  char xData[12048], xData1[12048];
+  static char chInc='A';
+  char fname1[32] = "?_loopTest2";
+  //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
+  fname1[0]=chInc;
+  eRAM.f_open(file1, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR);
+  for ( int ii = 0; ii < 100; ii++) {
+    for ( int jj = 0; jj < 26; jj++) {
+      if ( ii % 2 )
+        xData[jj] = 'A' + jj;
+      else
+        xData[jj] = 'a' + jj;
+    }
+    //if (SPIFFS_write(&fs, fd1, (u8_t *)xData, 26) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+    eRAM.f_write(file1, xData, 26);
+  }
+  //SPIFFS_close(&fs, fd1);
+  //SPIFFS_fflush(&fs, fd1);
+  eRAM.f_close(file1);
+  
+
+  Serial.println("Directory contents:");
+  eRAM.fs_listDir();
+
+  eRAM.f_open(file1, fname1, SPIFFS_RDONLY);
+  //if (SPIFFS_read(&fs, fd, (u8_t *)xData1, 2600) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
+  eRAM.f_read(file1, xData1,2600);
+  //SPIFFS_close(&fs, fd);
+  eRAM.f_close(file1);
+
+  for ( int ii = 0; ii < 100; ii++) {
+    for ( int jj = 0; jj < 26; jj++) {
+      if ( ii % 2 )
+        xData[jj] = 'A' + jj;
+      else
+        xData[jj] = 'a' + jj;
+    }
+    eRAM.writeArray(ii * 26, 26, (uint8_t*)xData);
+  }
+
+#ifdef DO_DEBUG
+  Serial.println();
+  for ( int ii = 0; ii < 100; ii++) {
+    eRAM.readArray(ii * 26, 26, (uint8_t*)xData2);
+    for ( int jj = 0; jj < 26; jj++) {
+      Serial.print( xData2[jj]);
+    }
+    Serial.println("  <<< eRAM");
+    for ( int jj = 0; jj < 26; jj++) {
+      Serial.print( xData1[jj + (ii * 26)]);
+    }
+    Serial.println("  <<< FLASH");
+  }
+#endif
+  chInc++;
+  if ( chInc > 'Z' ) chInc = 'A';
+}
