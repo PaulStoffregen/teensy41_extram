@@ -1,5 +1,7 @@
 # teensy41_extram
 
+**WARNING: Both the SPIFFS_t4 and the extRAM_SPIFFS_t4 libraries need to be installed into your libraries folder to use the external PSRAM or FLASH!**
+
 Implemation of SPIFFS using Peter Andersson (pelleplutt1976 at gmail.com) SPIFFS library as the base: https://github.com/pellepl/spiffs.  Wrapper functions created to make function calls similar to SDCard card functions.  Makes it easier to convert.
 
 User Frank B did the all effort to implement SPIFFS on the T4.1. While others have done the wrapper functions and the examples.
