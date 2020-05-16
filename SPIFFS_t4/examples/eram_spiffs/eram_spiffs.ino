@@ -10,13 +10,13 @@
 */
 
 
-#include <extRAM_t4.h>
+#include <spiffs_t4.h>
 #include <spiffs.h>
 
 //Setup files IO
 spiffs_file file1;
 
-extRAM_t4 eRAM;
+spiffs_t4 eRAM;
 
 //#define DO_DEBUG 1
 

@@ -1,4 +1,4 @@
-#include <extRAM_t4.h>
+#include <spiffs_t4.h>
 #include <spiffs.h>
 
 //Setup 2 files IO
@@ -6,7 +6,7 @@ spiffs_file file1;
 spiffs_file file2;
 spiffs_file file3;
 
-extRAM_t4 eRAM;
+spiffs_t4 eRAM;
 
 char buf[1024] = "";
 char fname[32] = "my_file1";

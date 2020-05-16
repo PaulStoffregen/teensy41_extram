@@ -10,10 +10,10 @@
 */
 extern "C" uint8_t external_psram_size;
 
-#include <extRAM_t4.h>
+#include <spiffs_t4.h>
 #include <spiffs.h>
 
-extRAM_t4 eRAM;
+spiffs_t4 eRAM;
 
 //Setup files IO
 spiffs_file file1;
