@@ -7,15 +7,6 @@ spiffs_file file2;
 spiffs_file file3;
 
 extRAM_t4 eRAM;
-//uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-//uint8_t spiffs_region = 1; //0 - flash, 1 - eram
-                           //2 - 2 4meg eram pseudo partitions
-//These have been replaced with defines for:
-//INIT_PSRAM_ONLY
-//INIT_FLASH_ONLY
-//INIT_FLASH_PSRAM
-
-uint8_t config = INIT_PSRAM_ONLY;
 
 char buf[1024] = "";
 char fname[32] = "my_file1";
@@ -59,18 +50,14 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    int8_t result = eRAM.begin(config);
-    if(result == 0){
-      eRAM.eraseFlashChip();
-    } else {
-      eRAM.eraseDevice();
-    }
-  }
+    eRAM.begin();
+    eRAM.eraseFlashChip();
+   }
 #endif
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(config);
+  eRAM.begin();
   eRAM.fs_mount();
 
   Serial.println();

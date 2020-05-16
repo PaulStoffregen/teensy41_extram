@@ -141,6 +141,7 @@ const unsigned long _startFS = 0x60000000UL + ((unsigned)&_flashimagelen & ~0x3f
 
 void my_spiffs_mount() {
 
+  Serial.printf("%x, %x\n",_flashimagelen, _startFS);
   spiffs_config cfg;
 
   cfg.phys_size = 1024 * 1024 * 1; // use 1 MB flash

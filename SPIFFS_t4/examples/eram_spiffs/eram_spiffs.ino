@@ -17,19 +17,11 @@
 spiffs_file file1;
 
 extRAM_t4 eRAM;
-//uint8_t config = 0; //0 - init eram only, 1-init flash only, 2-init both
-//uint8_t spiffs_region = 1; //0 - flash, 1 - eram
-//These have been replaced with defines for:
-//INIT_PSRAM_ONLY
-//INIT_FLASH_ONLY
-//INIT_PSRM_FLASH
-
-uint8_t config = INIT_PSRAM_ONLY;
 
 //#define DO_DEBUG 1
 
 char buf[512] = "Hello World! What a wonderful World :)";
-char fname[32] = "my_file1";
+char fname[32] = "my_file2";
 int szLen = strlen( buf );
 elapsedMicros my_us;
 
@@ -53,18 +45,14 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    int8_t result = eRAM.begin(config);
-    if(result == 0){
-      eRAM.eraseFlashChip();
-    } else {
-      eRAM.eraseDevice();
-    }
+    eRAM.begin();
+    eRAM.eraseFlashChip();
   }
 #endif
 
   Serial.println();
   Serial.println("Mount SPIFFS:");
-  eRAM.begin(config);
+  eRAM.begin();
   eRAM.fs_mount();
 
 #if 1
