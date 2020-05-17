@@ -37,12 +37,12 @@ extern "C" {
 	spiffs_file fd1;
 	
 	uint8_t _spiffs_region;
-	static const uint32_t flashBaseAddr[3] = { 0x800000u};
+	static const uint32_t flashBaseAddr[3] = { 0x800000u, 0x00000000u};
 	static const uint32_t eramBaseAddr = 0x07000000u;
 	static char flashID[8];
 	static const void* extBase = (void*)0x70000000u;
 	//4meg = 4,194,304‬bytes
-	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u};
+	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u, 16u * 1024u * 1024u,};
 	
 spiffs_t4::spiffs_t4()
 {
@@ -68,6 +68,8 @@ int8_t spiffs_t4::begin( ) {
 	}
 
 	if(external_psram_size == 8) {
+	  _spiffs_region = 0;
+		
 	  FLEXSPI2_INTEN = 0;
 	  FLEXSPI2_FLSHA1CR0 = 0x2000;
 	  FLEXSPI2_FLSHA1CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
@@ -75,7 +77,7 @@ int8_t spiffs_t4::begin( ) {
 	  FLEXSPI2_FLSHA1CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
 		| FLEXSPI_FLSHCR2_ARDSEQID(5) | FLEXSPI_FLSHCR2_ARDSEQNUM(0);
 
-	  FLEXSPI2_FLSHA2CR0 = 0x40000;
+	  FLEXSPI2_FLSHA2CR0 = 0x4000;
 	  FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	  FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
@@ -117,8 +119,9 @@ int8_t spiffs_t4::begin( ) {
 	  // cmd index 7 = read ID bytes
 	  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 	} else if(external_psram_size == 0) {
+	  _spiffs_region = 0;
 	  FLEXSPI2_INTEN = 0;
-	  FLEXSPI2_FLSHA1CR0 = 0x2000;
+	  FLEXSPI2_FLSHA1CR0 = 0x4000;
 	  FLEXSPI2_FLSHA1CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	  FLEXSPI2_FLSHA1CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
@@ -162,7 +165,6 @@ int8_t spiffs_t4::begin( ) {
 	}
 
 	  printStatusRegs();
-
 
 	  // ----------------- FLASH only ----------------------------------------------
 
@@ -226,6 +228,13 @@ int8_t spiffs_t4::begin( ) {
 	  flexspi_ip_command(14, flashBaseAddr[_spiffs_region]);
 
 	  printStatusRegs();
+	  
+	  //Reset clock to 132 Mhz
+	  // turn on clock  (TODO: increase clock speed later, slow & cautious for first release)
+	  CCM_CCGR7 |= CCM_CCGR7_FLEXSPI2(CCM_CCGR_OFF);
+	  CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK))
+		  | CCM_CBCMR_FLEXSPI2_PODF(4) | CCM_CBCMR_FLEXSPI2_CLK_SEL(2); // 528/5 = 132 MHz
+	  CCM_CCGR7 |= CCM_CCGR7_FLEXSPI2(CCM_CCGR_ON);
 	  
 	return result;
 
