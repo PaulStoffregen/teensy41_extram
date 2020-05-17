@@ -69,20 +69,12 @@ int8_t spiffs_t4::begin( ) {
 
 	  _spiffs_region = 0;
 		
-	  FLEXSPI2_INTEN = 0;
-	  FLEXSPI2_FLSHA1CR0 = 0x2000;
-	  FLEXSPI2_FLSHA1CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
-		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
-	  FLEXSPI2_FLSHA1CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
-		| FLEXSPI_FLSHCR2_ARDSEQID(5) | FLEXSPI_FLSHCR2_ARDSEQNUM(0);
-
 	  FLEXSPI2_FLSHA2CR0 = 0x4000;
 	  FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	  FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
 		| FLEXSPI_FLSHCR2_ARDSEQID(5) | FLEXSPI_FLSHCR2_ARDSEQNUM(0);
 
-	  FLEXSPI2_MCR0 &= ~FLEXSPI_MCR0_MDIS;
 
 	  FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	  FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
@@ -148,7 +140,7 @@ int8_t spiffs_t4::begin( ) {
 	  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x38);
 	  
 	  // reset the chip
-	  flexspi_ip_command(10, flashBaseAddr[_spiffs_region]); //exit QPI
+	  flexspi_ip_command(10,flashBaseAddr[_spiffs_region]); //exit QPI
 	  flexspi_ip_command(1, flashBaseAddr[_spiffs_region]); //reset enable
 	  flexspi_ip_command(2, flashBaseAddr[_spiffs_region]); //reset
 	  delayMicroseconds(50);
