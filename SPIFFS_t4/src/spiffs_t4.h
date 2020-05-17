@@ -73,6 +73,8 @@ class spiffs_t4 : public Print
 	void printStatusRegs();
 	
 	void fs_mount();
+	void fs_unmount();
+
 	static s32_t fs_erase(u32_t addr, u32_t size);	
 	static s32_t spiffs_write(u32_t addr, u32_t size, u8_t * src);
 	static s32_t spiffs_read(u32_t addr, u32_t size, u8_t * dst);
@@ -100,11 +102,13 @@ class spiffs_t4 : public Print
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	
- private:
 	static void flexspi_ip_command(uint32_t index, uint32_t addr);
 	static void flexspi_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length);
 	static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length);
 	static bool waitFlash(uint32_t timeout = 0);
+	
+ private:
+
 
 };
 

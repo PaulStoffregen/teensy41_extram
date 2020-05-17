@@ -67,46 +67,13 @@ int8_t spiffs_t4::begin( ) {
 		exit(1);
 	}
 
-	  _spiffs_region = 0;
-		
 	  FLEXSPI2_FLSHA2CR0 = 0x4000;
 	  FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	  FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0)
 		| FLEXSPI_FLSHCR2_ARDSEQID(5) | FLEXSPI_FLSHCR2_ARDSEQNUM(0);
 
-
-	  FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
-	  FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
-	  volatile uint32_t *luttable = &FLEXSPI2_LUT0;
-	  for (int i=0; i < 64; i++) luttable[i] = 0;
-	  FLEXSPI2_MCR0 |= FLEXSPI_MCR0_SWRESET;
-	  while (FLEXSPI2_MCR0 & FLEXSPI_MCR0_SWRESET) ; // wait
-
-	  // CBCMR[FLEXSPI2_SEL]
-	  // CBCMR[FLEXSPI2_PODF]
-
-	  FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
-	  FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
-
-	  // cmd index 0 = exit QPI mode
-	  FLEXSPI2_LUT0 = LUT0(CMD_SDR, PINS4, 0xF5);
-	  // cmd index 1 = reset enable
-	  FLEXSPI2_LUT4 = LUT0(CMD_SDR, PINS1, 0x66);
-	  // cmd index 2 = reset
-	  FLEXSPI2_LUT8 = LUT0(CMD_SDR, PINS1, 0x99);
-	  // cmd index 3 = read ID bytes
-	  FLEXSPI2_LUT12 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(DUMMY_SDR, PINS1, 24);
-	  FLEXSPI2_LUT13 = LUT0(READ_SDR, PINS1, 1);
-	  // cmd index 4 = enter QPI mode
-	  FLEXSPI2_LUT16 = LUT0(CMD_SDR, PINS1, 0x35);
-	  // cmd index 5 = read QPI
-	  FLEXSPI2_LUT20 = LUT0(CMD_SDR, PINS4, 0xEB) | LUT1(ADDR_SDR, PINS4, 24);
-	  FLEXSPI2_LUT21 = LUT0(DUMMY_SDR, PINS4, 6) | LUT1(READ_SDR, PINS4, 1);
-	  // cmd index 6 = write QPI
-	  FLEXSPI2_LUT24 = LUT0(CMD_SDR, PINS4, 0x38) | LUT1(ADDR_SDR, PINS4, 24);
-	  FLEXSPI2_LUT25 = LUT0(WRITE_SDR, PINS4, 1);
-
+		
 	  // cmd index 7 = read ID bytes
 	  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 
@@ -547,6 +514,10 @@ size_t spiffs_t4::write(const uint8_t *buffer, size_t size)
 
 
 //********************************************************************************************************
+void spiffs_t4::fs_unmount(){
+	SPIFFS_unmount(&fs);
+}
+
 
 void spiffs_t4::fs_mount() {
 
