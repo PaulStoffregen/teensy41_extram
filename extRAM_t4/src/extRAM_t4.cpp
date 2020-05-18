@@ -43,17 +43,17 @@ int8_t extRAM_t4::begin()
 			Serial.println("SPIFFS requested on 2nd PSRAM chip,");
 			Serial.println("4Mb in upper half of 1st PSRAM chip available");
 			Serial.println("for direct writes !!");
-			bytesAvaialbe = 4 * 1024 * 1024;
+			bytesAvailable = bytesAvailableMB * 1024 * 1024;
 		} else if(spiffs == 0){
 			Serial.println("2 PSRAM Chips Installed !!!");
 			Serial.println("12Mb available for direct writes !!");
-			bytesAvaialbe = 12 * 1024 * 1024;
+			bytesAvailable = (external_psram_size-bytesAvailableMB) * 1024 * 1024;
 		}
 	} else if(external_psram_size == 8){
 		Serial.println("1 PSRAM Chip Installed !!!");
 		Serial.println("4Mb in upper half of 1st PSRAM chip available");
 		Serial.println("for direct writes !!");
-		bytesAvaialbe = 4 * 1024 * 1024;
+		bytesAvailable = bytesAvailableMB * 1024 * 1024;
 	} else {
 		Serial.println("NO PSRAM Chips Installed !!!");
 		exit(1);
@@ -214,7 +214,7 @@ void extRAM_t4::eraseDevice(void) {
 		Serial.println("Start erasing device");
 		Serial.flush();
 		
-		while(i < bytesAvaialbe){
+		while(i < bytesAvailable){
 		  extRAM_t4::writeByte(i, 0xFF);
 		  if(i % 100000 == 0){
 			  Serial.print(".");

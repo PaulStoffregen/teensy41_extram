@@ -83,7 +83,7 @@ void setup() {
   Serial.println("Init Done - array loaded");
   Serial.println("...... ...... ......");
   
-  mymemory.writeArrayDMA(writeaddress, arraySize, mydata.Packet);
+  mymemory.writeArray(writeaddress, arraySize, mydata.Packet);
 
     //if (result == 0) Serial.println("Write Done - array loaded in FRAM chip");
     //if (result != 0) Serial.println("Write failed");
@@ -91,7 +91,7 @@ void setup() {
   
   
 //---------read data from memory chip
-  mymemory.readArrayDMA(writeaddress, arraySize, readdata.Packet);
+  mymemory.readArray(writeaddress, arraySize, readdata.Packet);
     //if (result == 0) Serial.println("Read Done - array loaded with read data");
     //if (result != 0) Serial.println("Read failed");
   Serial.println("...... ...... ......");

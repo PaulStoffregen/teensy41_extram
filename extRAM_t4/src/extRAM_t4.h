@@ -58,7 +58,8 @@ class extRAM_t4
 	void	eraseDevice(void);
 	
 	uint32_t eramBaseAddr = 0x70400000;
-	uint32_t bytesAvaialbe  = 4194305u;
+	uint16_t bytesAvailableMB = 4;
+	uint32_t bytesAvailable;
 
  private:
 
