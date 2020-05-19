@@ -22,12 +22,17 @@
 #endif
 // ----------- >8 ------------
 
-  typedef signed int s32_t;
-  typedef unsigned int u32_t;
-  typedef signed short s16_t;
-  typedef unsigned short u16_t;
+  //typedef signed int s32_t;
+  //typedef unsigned int u32_t;
+  //typedef signed short s16_t;
+  //typedef unsigned short u16_t;
   typedef signed char s8_t;
   typedef unsigned char u8_t;
+
+  #define s32_t int  
+  #define u32_t uint32_t
+  #define s16_t int16_t
+  #define u16_t uint16_t
 
 
 // compile time switches
