@@ -63,6 +63,15 @@
 
 #define FLASH_MEMMAP 1 //Use memory-mapped access
 
+struct dir
+{
+  char filename[16][32];
+  uint16_t fnamelen[16];
+  uint32_t fsize[16];
+  uint8_t fid[16];
+};
+
+
 class spiffs_t4 : public Print
 {
  public:
@@ -79,6 +88,10 @@ class spiffs_t4 : public Print
 	static s32_t spiffs_write(u32_t addr, u32_t size, u8_t * src);
 	static s32_t spiffs_read(u32_t addr, u32_t size, u8_t * dst);
 	void eraseFlashChip();
+	void eraseDevice(void);
+	void fs_space(uint32_t * total1, uint32_t *used1);
+	dir fs_getDir(uint16_t * numrecs) ;
+
 	void fs_listDir();
 	
 	int f_open(spiffs_file &fd, const char* fname, spiffs_flags flags);

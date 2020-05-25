@@ -37,12 +37,12 @@ extern "C" {
 	spiffs_file fd1;
 	
 	uint8_t _spiffs_region;
-	static const uint32_t flashBaseAddr[3] = { 0x800000u };
+	static const uint32_t flashBaseAddr[3] = { 0x800000u,  0x800000u};
 	static const uint32_t eramBaseAddr = 0x07000000u;
 	static char flashID[8];
 	static const void* extBase = (void*)0x70000000u;
 	//4meg = 4,194,304‬bytes
-	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u };
+	static uint32_t flashCapacity[3] = {16u * 1024u * 1024u,  8u * 1024u * 1024u};
 	
 spiffs_t4::spiffs_t4()
 {
@@ -56,17 +56,17 @@ spiffs_t4::spiffs_t4()
 //int8_t spiffs_t4::begin(uint8_t config, uint8_t spiffs_region) {
 int8_t spiffs_t4::begin( ) {
 	memset(flashID, 0, sizeof(flashID));
-	uint8_t result = 0;
+	int8_t result = -1;
 	
-	uint8_t size = external_psram_size;
 	_spiffs_region = 0;
 	
 	 // _spiffs_region = spiffs_region;
 	if(external_psram_size == 16){
 		Serial.println("You have 2 PSRAM Chips No Flash Installed Exiting!");
-		exit(1);
-	}
-
+		Serial.println("2nd PSRAM chip will be used for SPIFFS");
+		_spiffs_region = 1;
+		result = 1;
+	} else {
 	  FLEXSPI2_FLSHA2CR0 = 0x4000;
 	  FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
@@ -139,7 +139,9 @@ int8_t spiffs_t4::begin( ) {
 	  FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(READ_SDR, PINS4, 1);
 
 	  flexspi_ip_command(14, flashBaseAddr[_spiffs_region]);
-
+	  result = 0;
+	}
+	
 	  printStatusRegs();
 	  
 	  //Reset clock to 132 Mhz
@@ -152,7 +154,6 @@ int8_t spiffs_t4::begin( ) {
 	return result;
 
 }
-
 
 void spiffs_t4::printStatusRegs() {
 #if 0
@@ -276,11 +277,54 @@ void spiffs_t4::flexspi_ip_write(uint32_t index, uint32_t addr, const void *data
    Frank B, 2020
 */
 
-void spiffs_t4::fs_listDir() {
-  spiffs_DIR d;
-  struct spiffs_dirent e;
-  struct spiffs_dirent *pe = &e;
 
+void spiffs_t4::fs_space(uint32_t * total1, uint32_t *used1)
+{
+  uint32_t total, used;
+  SPIFFS_info(&fs, &total, &used);
+  *total1 = total;
+  *used1 = used;
+}
+
+dir spiffs_t4::fs_getDir(uint16_t * numrecs) {
+	
+   dir entries;
+   uint16_t i = 0;
+   char buffer[32];
+   int retVal, buf_size = 32;
+	
+   spiffs_DIR d;
+   struct spiffs_dirent e;
+   struct spiffs_dirent *pe = &e;
+	
+  SPIFFS_opendir(&fs, "/", &d);
+  while ((pe = SPIFFS_readdir(&d, pe))) {
+    //Serial.printf("%d %s [%04x] size:%i\n", i, pe->name, pe->obj_id, pe->size);
+    retVal = snprintf(buffer, buf_size, "%s", pe->name);
+    if (retVal > 0 && retVal < buf_size)
+    {
+		entries.fnamelen[i] = retVal;
+	}
+	for(uint8_t j=0; j<retVal; j++)
+		entries.filename[i][j] = buffer[j];
+	entries.fsize[i] = pe->size;
+	entries.fid[i] = pe->obj_id;
+	i += 1;
+  }
+  SPIFFS_closedir(&d);
+  
+  *numrecs = i;
+  
+  return entries;
+}
+
+
+void spiffs_t4::fs_listDir() {
+	
+	spiffs_DIR d;
+	struct spiffs_dirent e;
+	struct spiffs_dirent *pe = &e;
+	
   SPIFFS_opendir(&fs, "/", &d);
   while ((pe = SPIFFS_readdir(&d, pe))) {
     Serial.printf("%s [%04x] size:%i\n", pe->name, pe->obj_id, pe->size);
@@ -297,15 +341,22 @@ int spiffs_t4::f_writeFile(const char* fname, const char *dst, spiffs_flags flag
   if (SPIFFS_write(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
   SPIFFS_close(&fs, fd);
   SPIFFS_fflush(&fs, fd);
-  return SPIFFS_errno(&fs);
+  if(SPIFFS_close(&fs, fd) < 0) {
+	  return SPIFFS_errno(&fs);
+  } else {
+	  return fd;
+  }
 }
 
 int spiffs_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_flags flags) {
   // Surely, I've mounted spiffs before entering here
   spiffs_file  fd = SPIFFS_open(&fs, fname, flags, 0);
   if (SPIFFS_read(&fs, fd, (u8_t *)dst, szLen) < 0) Serial.printf("errno %i\n", SPIFFS_errno(&fs));
-  SPIFFS_close(&fs, fd);
-  return SPIFFS_errno(&fs);
+  if(SPIFFS_close(&fs, fd) < 0) {
+	  return SPIFFS_errno(&fs);
+  } else {
+	  return fd;
+  }
 }
 
 //Basic wrapper functions to sppiff commands.
@@ -319,9 +370,12 @@ int spiffs_t4::f_readFile(const char* fname, const char *dst, int szLen, spiffs_
 **/
 int spiffs_t4::f_open(spiffs_file &fd, const char* fname, spiffs_flags flags){
 	fd = SPIFFS_open(&fs, fname, flags, 0);
-	SPIFFS_errno(&fs);
 	//fd1 = fd;
-	return SPIFFS_errno(&fs);
+	if(fd < 0) {
+		return SPIFFS_errno(&fs);
+	} else {
+		return fd;
+	}
 }
 
 int spiffs_t4::f_write(spiffs_file fd, const char *dst, int szLen) {
@@ -436,6 +490,35 @@ void spiffs_t4::eraseFlashChip() {
   }
   t = millis() - t;
   Serial.printf("\nChip erased in %d seconds.\n", t / 1000);
+}
+
+/**************************************************************************/
+/*!
+    @brief  Erase device by overwriting it to 0x00
+
+*/
+/**************************************************************************/
+void spiffs_t4::eraseDevice(void) {
+		uint32_t i=0;
+		uint32_t jj = 0;
+		uint8_t *ptrERAM = (uint8_t *)(0x70000000 + flashBaseAddr[1]);	
+		
+		Serial.println("Start erasing device");
+		Serial.flush();
+		
+		while(i < 8388608){
+		  ptrERAM[i] = 0xFF;
+		  if(i % 100000 == 0){
+			  Serial.print(".");
+			  jj++;
+			  if(jj % 50 == 0) Serial.println();
+		  }
+		  i++;
+		}
+		Serial.println();
+
+		Serial.println("device erased");
+		Serial.println("...... ...... ......");
 }
 
 //********************************************************************************************************
