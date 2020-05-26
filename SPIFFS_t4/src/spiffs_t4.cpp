@@ -280,7 +280,7 @@ void spiffs_t4::flexspi_ip_write(uint32_t index, uint32_t addr, const void *data
 
 void spiffs_t4::fs_space(uint32_t * total1, uint32_t *used1)
 {
-  uint32_t total, used;
+  u32_t total, used;
   SPIFFS_info(&fs, &total, &used);
   *total1 = total;
   *used1 = used;
