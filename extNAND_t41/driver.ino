@@ -47,7 +47,7 @@ static void w25n01g_writeStatusRegister(uint8_t reg, uint8_t data)
 {
     uint8_t buf[1];
     buf[0] = data;
-    Serial.println(data, HEX);
+    Serial.println(buf[0], HEX);
     // cmd index 10 = write Status register 
     FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, W25N01G_WRITE_STATUS_REG) | LUT1(CMD_SDR, PINS1, reg); 
     FLEXSPI2_LUT42 = LUT0(WRITE_SDR, PINS1, 1);
@@ -59,7 +59,8 @@ static void w25n01g_writeStatusRegister(uint8_t reg, uint8_t data)
 static void w25n01g_writeCommandWithPageAddress(uint8_t reg, uint8_t addr)
 {
     // cmd index 12 = CommandWithPageAddress
-    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, reg) | LUT1(CMD_SDR, PINS1, addr);
+    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, reg) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT49 = LUT1(CMD_SDR, PINS1, addr);
 
     flexspi_ip_command(12, flashBaseAddr);
    
@@ -84,13 +85,14 @@ static void w25n01g_deviceReset()
 
     // No protection, WP-E off, WP-E prevents use of IO2
     w25n01g_writeStatusRegister(W25N01G_PROT_REG, W25N01G_PROT_CLEAR);
-   
+    w25n01g_readStatusRegister(W25N01G_PROT_REG, true);
+    
     // Buffered read mode (BUF = 1), ECC enabled (ECC = 1)
     w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE | W25N01G_CONFIG_BUFFER_READ_MODE);
     //w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE);
     //w25n01g_writeStatusRegister(W25N01G_CONF_REG,  W25N01G_CONFIG_BUFFER_READ_MODE);
-
     w25n01g_readStatusRegister(W25N01G_CONF_REG, true);
+
 }
 
 bool w25n01g_isReady()
@@ -128,7 +130,7 @@ static void w25n01g_writeEnable(bool wpE)
     couldBeBusy = true;
 }
 
-bool w25n01g_detect()
+bool w25n01g_startup()
 {
     geometry.sectors = 1024;      // Blocks
     geometry.pagesPerSector = 64; // Pages/Blocks
@@ -168,7 +170,10 @@ void w25n01g_eraseSector(uint32_t address)
     w25n01g_waitForReady();
     w25n01g_writeEnable(true);
     
-    w25n01g_writeCommandWithPageAddress(W25N01G_BLOCK_ERASE, W25N01G_LINEAR_TO_PAGE(address));
+    // cmd index 12 = CommandWithPageAddress
+    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, W25N01G_BLOCK_ERASE) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x10);
+    flexspi_ip_command(12, W25N01G_LINEAR_TO_PAGE(address));
 
     w25n01g_setTimeout( W25N01G_TIMEOUT_BLOCK_ERASE_MS);
 }
@@ -186,23 +191,21 @@ void w25n01g_eraseCompletely()
      }
 }
 
-static void w25n01g_programDataLoad(uint16_t Address, const uint8_t *data, int length)
+static void w25n01g_programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
 {
 
     w25n01g_waitForReady();
 
-    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 16);
+    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
     FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
 
-    flexspi_ip_write(13, W25N01G_LINEAR_TO_COLUMN(Address), data, length);
+    flexspi_ip_write(13, columnAddress, data, length);
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
 }
 
-static void w25n01g_randomProgramDataLoad(uint16_t Address, const uint8_t *data, int length)
+static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
 {
   
-  uint16_t columnAddress = W25N01G_LINEAR_TO_COLUMN(Address); 
-
     w25n01g_waitForReady();
     //quadSpiTransmitWithAddress1LINE(W25N01G_INSTRUCTION_RANDOM_PROGRAM_DATA_LOAD, 0, columnAddress, W28N01G_STATUS_COLUMN_ADDRESS_SIZE, data, length);
 
@@ -215,15 +218,16 @@ static void w25n01g_randomProgramDataLoad(uint16_t Address, const uint8_t *data,
 
 }
 
-static void w25n01g_programExecute(uint32_t Address)
+static void w25n01g_programExecute(uint32_t pageAddress)
 {
     Serial.println("w25n01g_programExecute:");
     w25n01g_waitForReady();
 
     FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_EXECUTE) | LUT1(DUMMY_SDR, PINS1, 8);
-    FLEXSPI2_LUT61 = LUT0(CMD_SDR, PINS1, W25N01G_LINEAR_TO_PAGE(Address));
+    //FLEXSPI2_LUT62 = LUT0(CMD_SDR, PINS1, pageAddress);
+    FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x10);
     
-    flexspi_ip_command(15, flashBaseAddr);
+    flexspi_ip_command(15, pageAddress);
     
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
 }
@@ -248,7 +252,7 @@ static void w25n01g_programExecute(uint32_t Address)
 // (3) Issue READ_DATA on column address.
 // (4) Return transferLength.
 
-int w25n01g_readBytes(uint32_t address, uint8_t *buffer, int length)
+int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
 {
     uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
 
@@ -262,7 +266,10 @@ int w25n01g_readBytes(uint32_t address, uint8_t *buffer, int length)
 
         currentPage = UINT32_MAX;
 
-        w25n01g_writeCommandWithPageAddress( W25N01G_PAGE_DATA_READ, targetPage);
+        //w25n01g_writeCommandWithPageAddress(W25N01G_PAGE_DATA_READ, targetPage);
+        // cmd index 12 = CommandWithPageAddress
+        FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, W25N01G_PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+        FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x10);
         Serial.println("Write Page Addr Complete");
 
         w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
@@ -284,10 +291,10 @@ int w25n01g_readBytes(uint32_t address, uint8_t *buffer, int length)
         transferLength = length;
     }
 Serial.println("READING DATA START");
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ_QUAD_OUTPUT) | LUT1(CADDR_SDR, PINS1, 0x10);
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ) | LUT1(CADDR_SDR, PINS1, 0x10);
   FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS1, 8) | LUT1(READ_SDR, PINS1, 1);
 
-   flexspi_ip_read(14, column, buffer, length);
+   flexspi_ip_read(14, column, data, length+1);
    Serial.println("Command 14 Complete");   
        
     // XXX Don't need this?
@@ -314,4 +321,139 @@ Serial.println("READING DATA START");
     }
 
     return transferLength;
+}
+
+
+//
+// Writes are done in three steps:
+// (1) Load internal data buffer with data to write
+//     - We use "Random Load Program Data", as "Load Program Data" resets unused data bytes in the buffer to 0xff.
+//     - Each "Random Load Program Data" instruction must be accompanied by at least a single data.
+//     - Each "Random Load Program Data" instruction terminates at the rising of CS.
+// (2) Enable write
+// (3) Issue "Execute Program"
+//
+
+/*
+flashfs page program behavior
+- Single program never crosses page boundary.
+- Except for this characteristic, it program arbitral size.
+- Write address is, naturally, not a page boundary.
+
+To cope with this behavior.
+
+pageProgramBegin:
+If buffer is dirty and programLoadAddress != address, then the last page is a partial write;
+issue PAGE_PROGRAM_EXECUTE to flash buffer contents, clear dirty and record the address as programLoadAddress and programStartAddress.
+Else do nothing.
+
+pageProgramContinue:
+Mark buffer as dirty.
+If programLoadAddress is on page boundary, then issue PROGRAM_LOAD_DATA, else issue RANDOM_PROGRAM_LOAD_DATA.
+Update programLoadAddress.
+Optionally observe the programLoadAddress, and if it's on page boundary, issue PAGE_PROGRAM_EXECUTE.
+
+pageProgramFinish:
+Observe programLoadAddress. If it's on page boundary, issue PAGE_PROGRAM_EXECUTE and clear dirty, else just return.
+If pageProgramContinue observes the page boundary, then do nothing(?).
+*/
+
+static uint32_t programStartAddress;
+static uint32_t programLoadAddress;
+bool bufferDirty = false;
+bool isProgramming = false;
+
+void w25n01g_pageProgramBegin(uint32_t address)
+{
+    if (bufferDirty) {
+        if (address != programLoadAddress) {
+            w25n01g_waitForReady();
+
+            isProgramming = false;
+
+            w25n01g_writeEnable(true);
+
+            w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(programStartAddress));
+
+            bufferDirty = false;
+            isProgramming = true;
+        }
+    } else {
+        programStartAddress = programLoadAddress = address;
+    }
+}
+
+void w25n01g_pageProgramContinue(const uint8_t *data, int length)
+{
+    // Check for page boundary overrun
+
+    w25n01g_waitForReady();
+
+    w25n01g_writeEnable(true);
+
+    isProgramming = false;
+
+    if (!bufferDirty) {
+        w25n01g_programDataLoad( W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
+    } else {
+        w25n01g_randomProgramDataLoad( W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
+    }
+
+    // XXX Test if write enable is reset after each data loading.
+
+    bufferDirty = true;
+    programLoadAddress += length;
+}
+
+
+void w25n01g_pageProgramFinish()
+{
+    if (bufferDirty && W25N01G_LINEAR_TO_COLUMN(programLoadAddress) == 0) {
+
+        currentPage = W25N01G_LINEAR_TO_PAGE(programStartAddress); // reset page to the page being written
+
+        w25n01g_programExecute( W25N01G_LINEAR_TO_PAGE(programStartAddress));
+
+        bufferDirty = false;
+        isProgramming = true;
+
+        programStartAddress = programLoadAddress;
+    }
+}
+
+/**
+ * Write bytes to a flash page. Address must not cross a page boundary.
+ *
+ * Bits can only be set to zero, not from zero back to one again. In order to set bits to 1, use the erase command.
+ *
+ * Length must be smaller than the page size.
+ *
+ * This will wait for the flash to become ready before writing begins.
+ *
+ * Datasheet indicates typical programming time is 0.8ms for 256 bytes, 0.2ms for 64 bytes, 0.05ms for 16 bytes.
+ * (Although the maximum possible write time is noted as 5ms).
+ *
+ * If you want to write multiple buffers (whose sum of sizes is still not more than the page size) then you can
+ * break this operation up into one beginProgram call, one or more continueProgram calls, and one finishProgram call.
+ */
+
+void w25n01g_pageProgram( uint32_t address, const uint8_t *data, int length)
+{
+    w25n01g_pageProgramBegin( address);
+    w25n01g_pageProgramContinue( data, length);
+    w25n01g_pageProgramFinish();
+}
+
+void w25n01g_flush()
+{
+    if (bufferDirty) {
+        currentPage = W25N01G_LINEAR_TO_PAGE(programStartAddress); // reset page to the page being written
+
+        w25n01g_programExecute( W25N01G_LINEAR_TO_PAGE(programStartAddress));
+
+        bufferDirty = false;
+        isProgramming = true;
+    } else {
+        isProgramming = false;
+    }
 }

@@ -6,6 +6,7 @@
 #define READ_SDR        FLEXSPI_LUT_OPCODE_READ_SDR
 #define WRITE_SDR       FLEXSPI_LUT_OPCODE_WRITE_SDR
 #define DUMMY_SDR       FLEXSPI_LUT_OPCODE_DUMMY_SDR
+#define STOP            FLEXSPI_LUT_OPCODE_STOP
 #define PINS1           FLEXSPI_LUT_NUM_PADS_1
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
@@ -40,6 +41,7 @@
 #define W25N01G_BB_MANAGEMENT    0xA1
 #define W25N01G_PROGRAM_DATA_LOAD        0x02
 #define W25N01G_RANDOM_PROGRAM_DATA_LOAD 0x84
+#define W25N01G_QUAD_RANDOM_LOAD_PROGRAM_DATA 0x34
 #define W25N01G_PROGRAM_EXECUTE  0x10
 #define W25N01G_PAGE_DATA_READ   0x13
 #define W25N01G_READ_DATA        0x03
@@ -137,7 +139,7 @@ flashPartition_t W28N01G_Partitions;
 
 //
 static const uint32_t flashBaseAddr = 0x01000000u;
-static const uint32_t eramBaseAddr = 0x07000000u;
+static const uint32_t psramAddr =     0x070000000;
 static char flashID[5];
 
 //

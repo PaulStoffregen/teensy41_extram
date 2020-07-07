@@ -1,35 +1,43 @@
 #include "defines.h"
+#define mode 0
 
 char buf[512] = "Hello World! What a wonderful World :)";
 uint8_t temp[512];
-uint8_t xData[16];
+uint8_t xData[2111];
 
 void setup(){
     Serial.begin(115200);
     delay(1000);
     Serial.println("Begin Init");
-    
+
     configure_flash();
+    w25n01g_init();
+
   
     //Lets try an erase
     //w25n01g_writeEnable(true);  //need to enable write
     //w25n01g_eraseCompletely();  //Erase chip
     //w25n01g_writeEnable(false);  //need to enable write
-    
-    for(uint16_t i = 0; i < 16; i++) xData[i] = 0;
 
-    Serial.println("Loading data");
+
+    uint8_t buffer[2048];
+    memset(buffer, 0, 2048);
+    for(uint16_t i = 0; i < 16; i++) buffer[i] = 0x19;
+
+    //Serial.println("Loading data");
     w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
-    //w25n01g_programDataLoad(0, xData, 16);
-    w25n01g_randomProgramDataLoad(0, xData, 16);
-    w25n01g_programExecute(0);
+    w25n01g_programDataLoad(W25N01G_LINEAR_TO_COLUMN(0), xData, 16);
+    //w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(0), xData, 16);
+    w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(4));
+    //w25n01g_pageProgram( 0, xData, 2048);
     
     Serial.println("Reading Data");
+    memset(buffer, 0, 2048);
     w25n01g_writeEnable(false);
-    w25n01g_readBytes(0, temp, 16);
+    w25n01g_readBytes(W25N01G_LINEAR_TO_COLUMN(0), buffer, 2048);
 
     for(uint16_t i = 0; i < 16; i++) {
-      Serial.printf("0x%02x, ",temp[i]);
+      Serial.printf("0x%02x, ",buffer[i]);
     } Serial.println();
 
 }
@@ -199,17 +207,19 @@ FLASHMEM void configure_flash()
     //cmd index 15 = enter QPI mode
     //FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x38);
 
-    // reset the chip
-    w25n01g_detect();
+}
 
+void w25n01g_init() {
     if (flexspi2_flash_id(flashBaseAddr) == 0x21AA) {
       Serial.println("Found W25N01G Flash Chip");
     } else {
       Serial.println("no chip found!");
       exit(1);
     }
- }
 
+    // reset the chip
+    w25n01g_startup();
+}
 
 void printStatusRegs() {
 #if 1
