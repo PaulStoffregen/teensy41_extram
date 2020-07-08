@@ -30,7 +30,7 @@ static uint8_t w25n01g_readStatusRegister(uint8_t reg, bool dump)
     FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, W25N01G_READ_STATUS_REG) | LUT1(CMD_SDR, PINS1, reg); 
     FLEXSPI2_LUT33 = LUT0(READ_SDR, PINS1, 1);
 
-    flexspi_ip_read(8, flashBaseAddr, &val, 1 );
+    flexspi_ip_read(8, 0, &val, 1 );
 
     if(dump) {
       Serial.printf("Status of reg 0x%x: \n", reg);
@@ -50,12 +50,12 @@ static void w25n01g_writeStatusRegister(uint8_t reg, uint8_t data)
     Serial.println(buf[0], HEX);
     // cmd index 10 = write Status register 
     FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, W25N01G_WRITE_STATUS_REG) | LUT1(CMD_SDR, PINS1, reg); 
-    FLEXSPI2_LUT42 = LUT0(WRITE_SDR, PINS1, 1);
+    FLEXSPI2_LUT41 = LUT0(WRITE_SDR, PINS1, 1);
 
-    flexspi_ip_write(10, flashBaseAddr, buf, 1);
+    flexspi_ip_write(10, 0, buf, 1);
   
 }
-
+/* not used
 static void w25n01g_writeCommandWithPageAddress(uint8_t reg, uint8_t addr)
 {
     // cmd index 12 = CommandWithPageAddress
@@ -65,7 +65,7 @@ static void w25n01g_writeCommandWithPageAddress(uint8_t reg, uint8_t addr)
     flexspi_ip_command(12, flashBaseAddr);
    
 }
-
+*/
 static void w25n01g_setTimeout(uint32_t timeoutMillis)
 {
     uint32_t now = millis();
@@ -105,7 +105,8 @@ static bool w25n01g_waitForReady()
 {
     while (!w25n01g_isReady()) {
         uint32_t now = millis();
-        if (now >= timeoutAt) {
+        //if (now >= timeoutAt) {
+        if (millis() - now >= timeoutAt) {
             return false;
         }
     }
@@ -166,14 +167,17 @@ bool w25n01g_startup()
  */
 void w25n01g_eraseSector(uint32_t address)
 {
-
-    w25n01g_waitForReady();
     w25n01g_writeEnable(true);
-    
+    w25n01g_waitForReady();
+   
     // cmd index 12 = CommandWithPageAddress
     FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, W25N01G_BLOCK_ERASE) | LUT1(DUMMY_SDR, PINS1, 8);
-    FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x10);
+    FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x20);
     flexspi_ip_command(12, W25N01G_LINEAR_TO_PAGE(address));
+
+    uint8_t status = w25n01g_readStatusRegister(W25N01G_STAT_REG, false );
+    if((status &  W25N01G_STATUS_ERASE_FAIL) == 1)
+        DTprint( erase Status: FAILED ); 
 
     w25n01g_setTimeout( W25N01G_TIMEOUT_BLOCK_ERASE_MS);
 }
@@ -181,8 +185,7 @@ void w25n01g_eraseSector(uint32_t address)
 //
 // W25N01G does not support full chip erase.
 // Call eraseSector repeatedly.
-
-void w25n01g_eraseCompletely()
+void w25n01g_deviceErase()
 {
     for (uint32_t block = 0; block < geometry.sectors; block++) {
         w25n01g_eraseSector(W25N01G_BLOCK_TO_LINEAR(block));
@@ -193,14 +196,20 @@ void w25n01g_eraseCompletely()
 
 static void w25n01g_programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
 {
-
+  DTprint(w25n01g_programDataLoad);
+  
     w25n01g_waitForReady();
 
-    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
-    FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
-
+    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_QUAD_PROGRAM_DATA_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
+    FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
     flexspi_ip_write(13, columnAddress, data, length);
+    
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
+    w25n01g_waitForReady();
+    uint8_t status = w25n01g_readStatusRegister(W25N01G_STAT_REG, false );
+    if((status &  W25N01G_STATUS_PROGRAM_FAIL) == 1)
+        DTprint( Programed Status: FAILED );
+
 }
 
 static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
@@ -209,26 +218,30 @@ static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t 
     w25n01g_waitForReady();
     //quadSpiTransmitWithAddress1LINE(W25N01G_INSTRUCTION_RANDOM_PROGRAM_DATA_LOAD, 0, columnAddress, W28N01G_STATUS_COLUMN_ADDRESS_SIZE, data, length);
 
-    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_RANDOM_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 16);
+    FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_RANDOM_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
     FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
+    flexspi_ip_read(14, columnAddress, data, length);
   
-  flexspi_ip_read(14, columnAddress, data, length);
-
+    w25n01g_waitForReady();
+    uint8_t status = w25n01g_readStatusRegister(W25N01G_STAT_REG, false );
+    if((status &  W25N01G_STATUS_PROGRAM_FAIL) == 1)
+        DTprint( Programed Status: FAILED );
   w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
 
 }
 
 static void w25n01g_programExecute(uint32_t pageAddress)
 {
-    Serial.println("w25n01g_programExecute:");
+    DTprint(w25n01g_programExecute);
     w25n01g_waitForReady();
 
     FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_EXECUTE) | LUT1(DUMMY_SDR, PINS1, 8);
     //FLEXSPI2_LUT62 = LUT0(CMD_SDR, PINS1, pageAddress);
-    FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x10);
+    FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x20);
     
     flexspi_ip_command(15, pageAddress);
     
+    w25n01g_waitForReady();
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
 }
 
@@ -254,6 +267,7 @@ static void w25n01g_programExecute(uint32_t pageAddress)
 
 int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
 {
+ 
     uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
 
     Serial.printf("%d, %d\n", currentPage, targetPage);
@@ -269,7 +283,8 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
         //w25n01g_writeCommandWithPageAddress(W25N01G_PAGE_DATA_READ, targetPage);
         // cmd index 12 = CommandWithPageAddress
         FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, W25N01G_PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
-        FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x10);
+        FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+        flexspi_ip_command(12, targetPage);
         Serial.println("Write Page Addr Complete");
 
         w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
@@ -278,8 +293,6 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
         }
 
         currentPage = targetPage;
-        Serial.printf("%d, %d\n", currentPage, targetPage);
-
     }
 
     uint16_t column = W25N01G_LINEAR_TO_COLUMN(address);
@@ -290,11 +303,11 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
     } else {
         transferLength = length;
     }
-Serial.println("READING DATA START");
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ) | LUT1(CADDR_SDR, PINS1, 0x10);
-  FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS1, 8) | LUT1(READ_SDR, PINS1, 1);
+DTprint(READING DATA START);
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ_QUAD_IO) | LUT1(CADDR_SDR, PINS4, 0x10);
+  FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS4, 4) | LUT1(READ_SDR, PINS4, 1);
 
-   flexspi_ip_read(14, column, data, length+1);
+   flexspi_ip_read(14, column, data, length);
    Serial.println("Command 14 Complete");   
        
     // XXX Don't need this?

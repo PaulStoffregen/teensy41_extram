@@ -1,5 +1,7 @@
 #include "defines.h"
 #define mode 0
+#define DHprint( a ) { Serial.print( #a); Serial.print(": ");Serial.println ( (uint32_t)a,HEX ); }
+#define DTprint( a ) { Serial.println( #a); }
 
 char buf[512] = "Hello World! What a wonderful World :)";
 uint8_t temp[512];
@@ -15,28 +17,25 @@ void setup(){
 
   
     //Lets try an erase
-    //w25n01g_writeEnable(true);  //need to enable write
-    //w25n01g_eraseCompletely();  //Erase chip
-    //w25n01g_writeEnable(false);  //need to enable write
+    //w25n01g_deviceErase();  //Erase chip
 
 
     uint8_t buffer[2048];
     memset(buffer, 0, 2048);
-    for(uint16_t i = 0; i < 16; i++) buffer[i] = 0x19;
+    for(uint16_t i = 0; i < 2048; i++) buffer[i] = i;
 
     //Serial.println("Loading data");
     w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
-    w25n01g_programDataLoad(W25N01G_LINEAR_TO_COLUMN(0), xData, 16);
-    //w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(0), xData, 16);
-    w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(4));
-    //w25n01g_pageProgram( 0, xData, 2048);
+    w25n01g_programDataLoad(W25N01G_LINEAR_TO_COLUMN(4000), buffer, 16);
+    //w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(40000), buffer, 16);
+    w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(4000));
     
     Serial.println("Reading Data");
     memset(buffer, 0, 2048);
     w25n01g_writeEnable(false);
-    w25n01g_readBytes(W25N01G_LINEAR_TO_COLUMN(0), buffer, 2048);
+    w25n01g_readBytes(W25N01G_LINEAR_TO_COLUMN(4000), buffer, 32);
 
-    for(uint16_t i = 0; i < 16; i++) {
+    for(uint16_t i = 0; i < 32; i++) {
       Serial.printf("0x%02x, ",buffer[i]);
     } Serial.println();
 
@@ -50,7 +49,7 @@ void flexspi_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length)
   uint8_t *p = (uint8_t *)data;
   const uint8_t *src;
 
-  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR0 = flashBaseAddr + addr;
   FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
   FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
   while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
@@ -95,23 +94,28 @@ static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, ui
 {
   const uint8_t *src;
   uint32_t n, wrlen;
+  uint8_t *p = (uint8_t *)data;
 
-  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR0 = flashBaseAddr + addr; 
   FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
   src = (const uint8_t *)data;
   FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
   while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
     if (n & FLEXSPI_INTR_IPTXWE) {
-      wrlen = length;
-      if (wrlen > 8) wrlen = 8;
-      if (wrlen > 0) {
-        //Serial.print("%");
-        memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen);
-        src += wrlen;
-        length -= wrlen;
-        FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
+     if (length >= 8) {
+        length -= 8;
+        *(uint32_t *)(p+0) = FLEXSPI2_TFDR0;
+        *(uint32_t *)(p+4) = FLEXSPI2_TFDR1;
+        p += 8;
+      } else {
+        src = (const uint8_t *)&FLEXSPI2_TFDR0;
+        while (length > 0) {
+          length--;
+          *p++ = *src++;
+        }
       }
-    }
+    FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
+    }    
   }
   if (n & FLEXSPI_INTR_IPCMDERR) {
     Serial.printf("Error (WRITE): FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
@@ -141,8 +145,8 @@ FLASHMEM static uint32_t flexspi2_flash_id(uint32_t addr)
   while (!(FLEXSPI2_INTR & FLEXSPI_INTR_IPCMDDONE)); // wait
   uint32_t id = FLEXSPI2_RFDR0;
   FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE | FLEXSPI_INTR_IPRXWA;
-  //Serial.println(id >> 16, HEX);
-  return id >> 16;
+  //Serial.println(id >> 8 , HEX);
+  return id >> 8;
 }
 
 
@@ -152,9 +156,9 @@ FLASHMEM void configure_flash()
 
     delay(500);
     
-    FLEXSPI2_FLSHA2CR0 = 0x1F400 * 2;          //Flash Size in KByte, 1F400
+    FLEXSPI2_FLSHA2CR0 = 134218;          //Flash Size in KByte, 1F400
     FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
-    | FLEXSPI_FLSHCR1_CAS(12)
+    | FLEXSPI_FLSHCR1_CAS(16)
     | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
     | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
     
@@ -164,9 +168,10 @@ FLASHMEM void configure_flash()
     | FLEXSPI_FLSHCR2_ARDSEQNUM(0);                     //Sequence Number for AHB Read triggered Command in LUT.
  
     // cmd index 7 = read ID bytes, 4*index number
-    FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, W25N01G_RDID) | LUT1(READ_SDR, PINS1, 1);     //9fh Read JDEC
+    FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, W25N01G_RDID) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT29 = LUT0(READ_SDR, PINS1, 1);     //9fh Read JDEC
 
-    // cmd index 8 = read Status register #1 SPI
+    // cmd index 8 = read/Write Status register
     //reserved for read Status register
     
     //cmd index 9 - WG reset

@@ -27,26 +27,28 @@
 
 // Instructions
 
-#define W25N01G_RDID             0x9F
-#define W25N01G_DEVICE_RESET     0xFF
-#define W25N01G_READ_STATUS_REG  0x05
-#define W25N01G_READ_STATUS_ALTERNATE_REG  0x0F
-#define W25N01G_WRITE_STATUS_REG 0x01
-#define W25N01G_WRITE_STATUS_ALTERNATE_REG 0x1F
-#define W25N01G_WRITE_ENABLE     0x06
-#define W25N01G_WRITE_DISABLE    0x04
-#define W25N01G_DIE_SELECT       0xC2
-#define W25N01G_BLOCK_ERASE      0xD8
-#define W25N01G_READ_BBM_LUT     0xA5
-#define W25N01G_BB_MANAGEMENT    0xA1
-#define W25N01G_PROGRAM_DATA_LOAD        0x02
-#define W25N01G_RANDOM_PROGRAM_DATA_LOAD 0x84
-#define W25N01G_QUAD_RANDOM_LOAD_PROGRAM_DATA 0x34
-#define W25N01G_PROGRAM_EXECUTE  0x10
-#define W25N01G_PAGE_DATA_READ   0x13
-#define W25N01G_READ_DATA        0x03
-#define W25N01G_FAST_READ        0x1B
-#define W25N01G_FAST_READ_QUAD_OUTPUT 0x6B
+#define W25N01G_RDID                            0x9F
+#define W25N01G_DEVICE_RESET                    0xFF
+#define W25N01G_READ_STATUS_REG                 0x05
+#define W25N01G_READ_STATUS_ALTERNATE_REG       0x0F
+#define W25N01G_WRITE_STATUS_REG                0x01
+#define W25N01G_WRITE_STATUS_ALTERNATE_REG      0x1F
+#define W25N01G_WRITE_ENABLE                    0x06
+#define W25N01G_WRITE_DISABLE                   0x04
+#define W25N01G_DIE_SELECT                      0xC2
+#define W25N01G_BLOCK_ERASE                     0xD8
+#define W25N01G_READ_BBM_LUT                    0xA5
+#define W25N01G_BB_MANAGEMENT                   0xA1
+#define W25N01G_PROGRAM_DATA_LOAD               0x02
+#define W25N01G_RANDOM_PROGRAM_DATA_LOAD        0x84
+#define W25N01G_QUAD_PROGRAM_DATA_DATA_LOAD     0x32
+#define W25N01G_QUAD_RANDOM_LOAD_PROGRAM_DATA   0x34
+#define W25N01G_PROGRAM_EXECUTE                 0x10
+#define W25N01G_PAGE_DATA_READ                  0x13
+#define W25N01G_READ_DATA                       0x03
+#define W25N01G_FAST_READ                       0x1B
+#define W25N01G_FAST_READ_QUAD_OUTPUT           0x6B
+#define W25N01G_FAST_READ_QUAD_IO               0xEB
 
 // Config/status register addresses
 #define W25N01G_PROT_REG 0xA0
@@ -137,10 +139,10 @@ flashPartition_t W28N01G_Partitions;
 #define FLASH_PARTITION_TYPE_BADBLOCK_MANAGEMENT 1
 #define FLASH_PARTITION_TYPE_FLASHFS 0
 
-//
+// 
 static const uint32_t flashBaseAddr = 0x01000000u;
 static const uint32_t psramAddr =     0x070000000;
-static char flashID[5];
+static char flashID[3];
 
 //
 uint32_t timeoutAt;
