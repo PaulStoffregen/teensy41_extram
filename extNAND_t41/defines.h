@@ -108,9 +108,6 @@
 #define W28N01G_STATUS_PAGE_ADDRESS_SIZE    16
 #define W28N01G_STATUS_COLUMN_ADDRESS_SIZE  16
 
-//
-typedef uint16_t flashSector_t;
-
 typedef struct flashGeometry_s {
     flashSector_t sectors; // Count of the number of erasable blocks on the device
     uint16_t pageSize; // In bytes
@@ -121,23 +118,6 @@ typedef struct flashGeometry_s {
 
 flashGeometry_t geometry;
 
-//
-// flash partitioning api
-//
-
-typedef struct flashPartition_s {
-    uint8_t type;
-    flashSector_t startSector;
-    flashSector_t endSector;
-} flashPartition_t;
-
-flashPartition_t W28N01G_Partitions;
-
-// + 1 for inclusive, start and end sector can be the same sector.
-#define FLASH_PARTITION_SECTOR_COUNT(partition) (partition->endSector + 1 - partition->startSector)
-
-#define FLASH_PARTITION_TYPE_BADBLOCK_MANAGEMENT 1
-#define FLASH_PARTITION_TYPE_FLASHFS 0
 
 // 
 static const uint32_t flashBaseAddr = 0x01000000u;
