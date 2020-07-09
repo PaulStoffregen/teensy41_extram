@@ -26,11 +26,11 @@ void setup(){
     for(uint16_t i = 0; i < 2048; i++) buffer[i] = i;
 
     //Serial.println("Loading data");
-    //w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+    w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
     //w25n01g_programDataLoad(W25N01G_LINEAR_TO_COLUMN(0), buffer, 16);
-    //w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(4000), buffer, 16);
-    //w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(0));
-    w25n01g_pageProgram(0, buffer, 32);
+    w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(0), buffer, 16);
+    w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(0));
+    //w25n01g_pageProgram(3900, buffer, 32);
     
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
@@ -48,11 +48,11 @@ Dprint( (char *)beefy )
     memset(buffer, 0, 2048);
     for(uint8_t j = 0; j < 20; j++) buffer[j] = beefy[j];
 
-    //w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+    w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
     //w25n01g_programDataLoad(W25N01G_LINEAR_TO_COLUMN(4000), buffer, 20);
-    //w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(40000), buffer, 16);
-    //w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(4000));
-    w25n01g_pageProgram(4000, buffer, 20);
+    w25n01g_randomProgramDataLoad(W25N01G_LINEAR_TO_COLUMN(4000), buffer, 20);
+    w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(4000));
+    //w25n01g_pageProgram(4000, buffer, 20);
 
     
     //Serial.println("Reading Data");

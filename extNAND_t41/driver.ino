@@ -50,9 +50,9 @@ static void w25n01g_deviceReset()
     w25n01g_readStatusRegister(W25N01G_PROT_REG, false);
     
     // Buffered read mode (BUF = 1), ECC enabled (ECC = 1)
-    //w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE | W25N01G_CONFIG_BUFFER_READ_MODE);
+    w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE | W25N01G_CONFIG_BUFFER_READ_MODE);
     //w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE);
-    w25n01g_writeStatusRegister(W25N01G_CONF_REG,  W25N01G_CONFIG_BUFFER_READ_MODE);
+    //w25n01g_writeStatusRegister(W25N01G_CONF_REG,  W25N01G_CONFIG_BUFFER_READ_MODE);
     w25n01g_readStatusRegister(W25N01G_CONF_REG, false);
 
 }
@@ -165,11 +165,10 @@ static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t 
 {
   
     w25n01g_waitForReady();
-    //quadSpiTransmitWithAddress1LINE(W25N01G_INSTRUCTION_RANDOM_PROGRAM_DATA_LOAD, 0, columnAddress, W28N01G_STATUS_COLUMN_ADDRESS_SIZE, data, length);
 
     FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_RANDOM_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
     FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
-    flexspi_ip_read(14, flashBaseAddr + columnAddress, data, length);
+    flexspi_ip_write(13, flashBaseAddr + columnAddress, data, length);
   
     w25n01g_waitForReady();
     uint8_t status = w25n01g_readStatusRegister(W25N01G_STAT_REG, false );
