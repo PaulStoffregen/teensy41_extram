@@ -108,18 +108,12 @@
 #define W28N01G_STATUS_PAGE_ADDRESS_SIZE    16
 #define W28N01G_STATUS_COLUMN_ADDRESS_SIZE  16
 
-//
-typedef uint16_t flashSector_t;
-
-typedef struct flashGeometry_s {
-    flashSector_t sectors; // Count of the number of erasable blocks on the device
-    uint16_t pageSize; // In bytes
-    uint32_t sectorSize; // This is just pagesPerSector * pageSize
-    uint32_t totalSize;  // This is just sectorSize * sectors
-    uint16_t pagesPerSector;
-} flashGeometry_t;
-
-flashGeometry_t geometry;
+//Geometry
+#define sectors              1024
+#define pagesPerSector        64
+#define pageSize            2048
+#define sectorSize          pagesPerSector * pageSize
+#define totalSize           sectorSize * geometry.sectors
 
 
 // 

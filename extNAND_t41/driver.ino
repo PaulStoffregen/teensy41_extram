@@ -93,23 +93,6 @@ static void w25n01g_writeEnable(bool wpE)
     couldBeBusy = true;
 }
 
-bool w25n01g_startup()
-{
-    geometry.sectors = 1024;      // Blocks
-    geometry.pagesPerSector = 64; // Pages/Blocks
-    geometry.pageSize = 2048;
-
-    geometry.sectorSize = geometry.pagesPerSector * geometry.pageSize;
-    geometry.totalSize = geometry.sectorSize * geometry.sectors;
-
-    couldBeBusy = true; // Just for luck we'll assume the chip could be busy even though it isn't specced to be
-
-    w25n01g_deviceReset();
-
-
-    return true;
-}
-
 
 /**
  * Erase a sector full of bytes to all 1's at the given byte offset in the flash chip.
@@ -136,16 +119,18 @@ void w25n01g_eraseSector(uint32_t address)
 // Call eraseSector repeatedly.
 void w25n01g_deviceErase()
 {
-    for (uint32_t block = 0; block < geometry.sectors; block++) {
+    for (uint32_t block = 0; block < sectors; block++) {
         w25n01g_eraseSector(W25N01G_BLOCK_TO_LINEAR(block));
         Serial.print(".");
         if((block % 128) == 0) Serial.println();
      }
 }
 
-static void w25n01g_programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+static void w25n01g_programDataLoad(uint16_t Address, const uint8_t *data, int length)
 {
   //DTprint(w25n01g_programDataLoad);
+    w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+    uint16_t columnAddress = W25N01G_LINEAR_TO_COLUMN(Address);
   
     w25n01g_waitForReady();
 
@@ -161,9 +146,11 @@ static void w25n01g_programDataLoad(uint16_t columnAddress, const uint8_t *data,
 
 }
 
-static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+static void w25n01g_randomProgramDataLoad(uint16_t Address, const uint8_t *data, int length)
 {
-  
+    w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+    uint16_t columnAddress = W25N01G_LINEAR_TO_COLUMN(Address);
+
     w25n01g_waitForReady();
 
     FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_RANDOM_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
@@ -178,9 +165,12 @@ static void w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t 
 
 }
 
-static void w25n01g_programExecute(uint32_t pageAddress)
+static void w25n01g_programExecute(uint32_t Address)
 {
     //DTprint(w25n01g_programExecute);
+    w25n01g_writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+
+    uint32_t pageAddress = W25N01G_LINEAR_TO_PAGE(Address);
     w25n01g_waitForReady();
     
     flexspi_ip_command(15, flashBaseAddr + pageAddress);
@@ -211,7 +201,8 @@ static void w25n01g_programExecute(uint32_t pageAddress)
 
 int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
 {
-     uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
+    w25n01g_writeEnable(false);
+    uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
 
     if (currentPage != targetPage) {
         if (!w25n01g_waitForReady()) {
@@ -270,137 +261,32 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
     return transferLength;
 }
 
+/* Not used yet */
+void w25n01g_setBufMode(uint8_t bufMode) {
+    /* bufMode = 1:
+      * The Buffer Read Mode (BUF=1) requires a Column Address to start outputting the 
+      * existing data inside the Data Buffer, and once it reaches the end of the data 
+      * buffer (Byte 2,111)
+      * 
+     * bufMode = 0:
+      * The Continuous Read Mode (BUF=0) doesn’t require the starting Column Address. 
+      * The device will always start output the data from the first column (Byte 0) of the 
+      * Data buffer, and once the end of the data buffer (Byte 2,048) is reached, the data 
+      * output will continue through the next memory page. 
+      * 
+      * With Continuous Read Mode, it is possible to read out the entire memory array using 
+      * a single read command. 
+      */
 
-//
-// Writes are done in three steps:
-// (1) Load internal data buffer with data to write
-//     - We use "Random Load Program Data", as "Load Program Data" resets unused data bytes in the buffer to 0xff.
-//     - Each "Random Load Program Data" instruction must be accompanied by at least a single data.
-//     - Each "Random Load Program Data" instruction terminates at the rising of CS.
-// (2) Enable write
-// (3) Issue "Execute Program"
-//
+    // Set mode after device reset.
 
-/*
-flashfs page program behavior
-- Single program never crosses page boundary.
-- Except for this characteristic, it program arbitral size.
-- Write address is, naturally, not a page boundary.
-
-To cope with this behavior.
-
-pageProgramBegin:
-If buffer is dirty and programLoadAddress != address, then the last page is a partial write;
-issue PAGE_PROGRAM_EXECUTE to flash buffer contents, clear dirty and record the address as programLoadAddress and programStartAddress.
-Else do nothing.
-
-pageProgramContinue:
-Mark buffer as dirty.
-If programLoadAddress is on page boundary, then issue PROGRAM_LOAD_DATA, else issue RANDOM_PROGRAM_LOAD_DATA.
-Update programLoadAddress.
-Optionally observe the programLoadAddress, and if it's on page boundary, issue PAGE_PROGRAM_EXECUTE.
-
-pageProgramFinish:
-Observe programLoadAddress. If it's on page boundary, issue PAGE_PROGRAM_EXECUTE and clear dirty, else just return.
-If pageProgramContinue observes the page boundary, then do nothing(?).
-*/
-
-static uint32_t programStartAddress;
-static uint32_t programLoadAddress;
-bool bufferDirty = false;
-bool isProgramming = false;
-
-void w25n01g_pageProgramBegin(uint32_t address)
-{
-    if (bufferDirty) {
-        if (address != programLoadAddress) {
-            w25n01g_waitForReady();
-
-            isProgramming = false;
-
-            w25n01g_writeEnable(true);
-
-            w25n01g_programExecute(W25N01G_LINEAR_TO_PAGE(programStartAddress));
-
-            bufferDirty = false;
-            isProgramming = true;
-        }
+    if(bufMode == 1) {
+        w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE | W25N01G_CONFIG_BUFFER_READ_MODE);
+    } else if(bufMode == 0) {
+        w25n01g_writeStatusRegister(W25N01G_CONF_REG, W25N01G_CONFIG_ECC_ENABLE);
     } else {
-        programStartAddress = programLoadAddress = address;
-    }
-}
-
-void w25n01g_pageProgramContinue(const uint8_t *data, int length)
-{
-    // Check for page boundary overrun
-
-    w25n01g_waitForReady();
-
-    w25n01g_writeEnable(true);
-
-    isProgramming = false;
-
-    if (!bufferDirty) {
-        w25n01g_programDataLoad( W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
-    } else {
-        w25n01g_randomProgramDataLoad( W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
+        Serial.println("Mode not supported !!!!");
     }
 
-    // XXX Test if write enable is reset after each data loading.
-
-    bufferDirty = true;
-    programLoadAddress += length;
 }
 
-
-void w25n01g_pageProgramFinish()
-{
-    if (bufferDirty && W25N01G_LINEAR_TO_COLUMN(programLoadAddress) == 0) {
-
-        currentPage = W25N01G_LINEAR_TO_PAGE(programStartAddress); // reset page to the page being written
-
-        w25n01g_programExecute( W25N01G_LINEAR_TO_PAGE(programStartAddress));
-
-        bufferDirty = false;
-        isProgramming = true;
-
-        programStartAddress = programLoadAddress;
-    }
-}
-
-/**
- * Write bytes to a flash page. Address must not cross a page boundary.
- *
- * Bits can only be set to zero, not from zero back to one again. In order to set bits to 1, use the erase command.
- *
- * Length must be smaller than the page size.
- *
- * This will wait for the flash to become ready before writing begins.
- *
- * Datasheet indicates typical programming time is 0.8ms for 256 bytes, 0.2ms for 64 bytes, 0.05ms for 16 bytes.
- * (Although the maximum possible write time is noted as 5ms).
- *
- * If you want to write multiple buffers (whose sum of sizes is still not more than the page size) then you can
- * break this operation up into one beginProgram call, one or more continueProgram calls, and one finishProgram call.
- */
-
-void w25n01g_pageProgram( uint32_t address, const uint8_t *data, int length)
-{
-    w25n01g_pageProgramBegin( address);
-    w25n01g_pageProgramContinue( data, length);
-    w25n01g_pageProgramFinish();
-}
-
-void w25n01g_flush()
-{
-    if (bufferDirty) {
-        currentPage = W25N01G_LINEAR_TO_PAGE(programStartAddress); // reset page to the page being written
-
-        w25n01g_programExecute( W25N01G_LINEAR_TO_PAGE(programStartAddress));
-
-        bufferDirty = false;
-        isProgramming = true;
-    } else {
-        isProgramming = false;
-    }
-}
