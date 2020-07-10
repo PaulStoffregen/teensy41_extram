@@ -110,10 +110,11 @@
 
 //Geometry
 #define sectors              1024
-#define pagesPerSector        64
-#define pageSize            2048
+#define pagesPerSector         64
+#define pageSize              2048
 #define sectorSize          pagesPerSector * pageSize
 #define totalSize           sectorSize * geometry.sectors
+#define eccSize                 64
 
 
 // 
@@ -126,3 +127,5 @@ uint32_t timeoutAt;
 bool couldBeBusy;
 
 static uint32_t currentPage = UINT32_MAX;
+
+

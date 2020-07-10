@@ -1,3 +1,185 @@
+
+FLASHMEM void configure_flash()
+{
+    memset(flashID, 0, sizeof(flashID));
+
+    delay(500);
+    
+    FLEXSPI2_FLSHA2CR0 = 134218;          //Flash Size in KByte, 1F400
+    FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
+    | FLEXSPI_FLSHCR1_CAS(12)
+    | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
+    | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
+    
+    FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6)    //Sequence Index for AHB Write triggered Command
+    | FLEXSPI_FLSHCR2_AWRSEQNUM(0)                      //Sequence Number for AHB Read triggered Command in LUT.
+    | FLEXSPI_FLSHCR2_ARDSEQID(5)                       //Sequence Index for AHB Read triggered Command in LUT
+    | FLEXSPI_FLSHCR2_ARDSEQNUM(0);                     //Sequence Number for AHB Read triggered Command in LUT.
+ 
+    // cmd index 7 = read ID bytes, 4*index number
+    FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, W25N01G_RDID) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT29 = LUT0(READ_SDR, PINS1, 1);     //9fh Read JDEC
+
+    // cmd index 8 = read Status register
+    // set in function w25n01g_readStatusRegister(uint8_t reg, bool dump)
+    
+    //cmd index 9 - WG reset, see function w25n01g_deviceReset()
+    FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, W25N01G_DEVICE_RESET); 
+
+    // cmd index 10 = write Status register
+    // see function w25n01g_writeStatusRegister(uint8_t reg, uint8_t data)
+
+    // cmd 11 index write enable cmd
+    // see function w25n01g_writeEnable(bool wpE)
+
+    //cmd 12 Command based on PageAddress
+    // see functions:
+    // w25n01g_eraseSector(uint32_t addr) and
+    // w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
+    
+    //cmd 13 program load Data
+    // see functions:
+    // w25n01g_programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+    // and
+    // w25n01g_randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+
+    //cmd 14 program read Data -- reserved
+    //FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ_QUAD_IO) | LUT1(CADDR_SDR, PINS4, 0x10);
+    FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, W25N01G_FAST_READ_QUAD_OUTPUT) | LUT1(CADDR_SDR, PINS1, 0x10);
+    FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS4, 8) | LUT1(READ_SDR, PINS4, 1);
+    
+    //cmd 15 - program execute
+    FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, W25N01G_PROGRAM_EXECUTE) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x20);
+
+}
+
+void w25n01g_init() {
+    if (flexspi2_flash_id(flashBaseAddr) == 0x21AA) {
+      Serial.println("Found W25N01G Flash Chip");
+    } else {
+      Serial.println("no chip found!");
+      exit(1);
+    }
+
+    // reset the chip
+    w25n01g_deviceReset();
+}
+
+
+
+
+
+void flexspi_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length)
+{
+  uint32_t n;
+  uint8_t *p = (uint8_t *)data;
+  const uint8_t *src;
+
+  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
+  FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+  while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
+    if (n & FLEXSPI_INTR_IPRXWA) {
+      //Serial.print("*");
+      if (length >= 8) {
+        length -= 8;
+        *(uint32_t *)(p+0) = FLEXSPI2_RFDR0;
+        *(uint32_t *)(p+4) = FLEXSPI2_RFDR1;
+        p += 8;
+      } else {
+        src = (const uint8_t *)&FLEXSPI2_RFDR0;
+        while (length > 0) {
+          length--;
+          *p++ = *src++;
+        }
+      }
+      FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+    }
+  }
+  
+  if (n & FLEXSPI_INTR_IPCMDERR) {
+    Serial.printf("Error (READ): FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+    //Serial.print("ERROR: FLEXSPI2_INTR = "), Serial.println(FLEXSPI2_INTR, BIN);
+  }
+  
+  FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+  //Serial.printf(" FLEXSPI2_RFDR0=%08lX\r\n", FLEXSPI2_RFDR0);
+  //if (length > 4) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR1);
+  //if (length > 8) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR2);
+  //if (length > 16) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR3);
+  src = (const uint8_t *)&FLEXSPI2_RFDR0;
+  while (length > 0) {
+    *p++ = *src++;
+    length--;
+  }
+  if (FLEXSPI2_INTR & FLEXSPI_INTR_IPRXWA) FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+}
+
+
+static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length)
+{
+  const uint8_t *src;
+  uint32_t n, wrlen;
+
+  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
+  src = (const uint8_t *)data;
+  FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+  
+  while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
+
+    if (n & FLEXSPI_INTR_IPTXWE) {
+      wrlen = length;
+      if (wrlen > 8) wrlen = 8;
+      if (wrlen > 0) {
+  
+        //memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen); !crashes sometimes!
+        uint8_t *p = (uint8_t *) &FLEXSPI2_TFDR0;
+        for (unsigned i = 0; i < wrlen; i++) *p++ = *src++;
+  
+        //src += wrlen;
+        length -= wrlen;
+        FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
+      }
+    }
+    
+  }
+  
+  if (n & FLEXSPI_INTR_IPCMDERR) {
+    Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+  }
+  
+  FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+}
+
+
+void flexspi_ip_command(uint32_t index, uint32_t addr)
+{
+  uint32_t n;
+  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index);
+  FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+  while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)); // wait
+  if (n & FLEXSPI_INTR_IPCMDERR) {
+    Serial.print("ERROR: FLEXSPI2_INTR = "), Serial.println(FLEXSPI2_INTR, BIN);
+    Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\n", FLEXSPI2_IPRXFSTS);
+  }
+  FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+}
+
+FLASHMEM static uint32_t flexspi2_flash_id(uint32_t addr)
+{
+  FLEXSPI2_IPCR0 = addr;
+  FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(7) | FLEXSPI_IPCR1_IDATSZ(5);
+  FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+  while (!(FLEXSPI2_INTR & FLEXSPI_INTR_IPCMDDONE)); // wait
+  uint32_t id = FLEXSPI2_RFDR0;
+  FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE | FLEXSPI_INTR_IPRXWA;
+  //Serial.println(id >> 8 , HEX);
+  return id >> 8;
+}
+
 static uint8_t w25n01g_readStatusRegister(uint8_t reg, bool dump)
 {
     uint8_t val;
@@ -134,6 +316,7 @@ static void w25n01g_programDataLoad(uint16_t Address, const uint8_t *data, int l
   
     w25n01g_waitForReady();
 
+
     FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, W25N01G_QUAD_PROGRAM_DATA_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
     FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
     flexspi_ip_write(13, flashBaseAddr + columnAddress, data, length);
@@ -234,7 +417,7 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
         transferLength = length;
     }
 
-   flexspi_ip_read(14, flashBaseAddr + column, data, length);
+   flexspi_ip_read(14, flashBaseAddr + column, data, transferLength);
        
     // XXX Don't need this?
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
@@ -247,15 +430,15 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
     uint8_t eccCode = W25N01G_STATUS_FLAG_ECC(statReg);
 
     switch (eccCode) {
-    case 0: // Successful read, no ECC correction
-        break;
-    case 1: // Successful read with ECC correction
-    case 2: // Uncorrectable ECC in a single page
-    case 3: // Uncorrectable ECC in multiple pages
-        //w25n01g_addError(address, eccCode);
-        Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
-        w25n01g_deviceReset();
-        break;
+        case 0: // Successful read, no ECC correction
+            break;
+        case 1: // Successful read with ECC correction
+        case 2: // Uncorrectable ECC in a single page
+        case 3: // Uncorrectable ECC in multiple pages
+            //w25n01g_addError(address, eccCode);
+            Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
+            w25n01g_deviceReset();
+            break;
     }
 
     return transferLength;
