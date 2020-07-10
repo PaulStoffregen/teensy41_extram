@@ -59,9 +59,9 @@ void setup() {
 
   for (uint16_t i = 0; i < 32; i++) {
     if ( buffer[i])
-      Serial.printf("0x%02x:%c ", buffer[i], buffer[i]);
-    else
-      Serial.printf("0x%02x:%c ", buffer[i], ' ');
+    Serial.printf("0x%02x:%c ", buffer[i], buffer[i]);
+  else
+    Serial.printf("0x%02x:%c ", buffer[i], ' ');
   } Serial.println();
 
   Serial.println();
@@ -286,6 +286,7 @@ void check42( bool doWrite ) {
         if ( ik != 0 ) {
           Serial.printf( "\t+++ NOT 42 Good Run of %u {bad @ %u}\n", ik, ii );
           ik = 0;
+          return;
         }
         if ( jj < 100 ) Serial.printf( "%3u=%8u\n", ik, x42[ik] );
         jj++;
@@ -302,5 +303,3 @@ void check42( bool doWrite ) {
   errCnt += jj;
   Serial.printf( "\tFound 42 in NAND 0x%X Times\n", sizeofNAND - jj );
 }
-
-
