@@ -10,9 +10,9 @@ uint8_t valERAM;
 const uint32_t  sizeofNAND= 134217728;
 
 //only used for check42 or check24
-uint16_t arraySize = 4096;
-uint8_t x42[4096];
-uint16_t flashBufferSize = (2048 + 64) * 2;  //2,112 bytes, 64 ecc + 2048 data buffer
+uint16_t arraySize = 2048;
+uint8_t x42[2048];
+uint16_t flashBufferSize = (2048 + 64) * 1;  //2,112 bytes, 64 ecc + 2048 data buffer
 
 
 
@@ -24,9 +24,11 @@ void setup(){
     configure_flash();
     w25n01g_init();
 
+    delay(500);
+
     check42(false);
 
-     //Lets try an erase
+    //Lets try an erase
     //w25n01g_deviceErase();  //Erase chip
 
     memset(buffer, 0xFF, 2048);
@@ -34,9 +36,10 @@ void setup(){
 
     //Serial.println("Loading data");
     //w25n01g_programDataLoad(0, buffer, 16);
-    w25n01g_randomProgramDataLoad(0, buffer, 16);
-    w25n01g_programExecute(0);
-    
+    //w25n01g_randomProgramDataLoad(0, buffer, 16);
+    //w25n01g_programExecute(0);
+    w25n01g_programDataLoad(0, buffer, 16);
+
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
     w25n01g_writeEnable(false);
@@ -54,21 +57,21 @@ Dprint( (char *)beefy )
     for(uint8_t j = 0; j < 20; j++) buffer[j] = beefy[j];
 
     //w25n01g_programDataLoad(4000, buffer, 20);
-    w25n01g_randomProgramDataLoad(4000, buffer, 20);
-    w25n01g_programExecute(4000);
+    //w25n01g_randomProgramDataLoad(4000, buffer, 20);
+    //w25n01g_programExecute(4000);
+    w25n01g_programDataLoad(4000, buffer, 20);
 
-    
+   
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
     w25n01g_readBytes(4000, buffer, 20);
 
-    for(uint16_t i = 0; i < 32; i++) {
+    for(uint16_t i = 0; i < 20; i++) {
       Serial.printf("0x%02x[%c], ",buffer[i], buffer[i]);
     } Serial.println();  
 
     Serial.println();
-   check42(true);
-
+    check42(true);
 }
 
 void loop(){}
@@ -77,6 +80,8 @@ void loop(){}
 uint32_t errCnt = 0;
 elapsedMicros my_us;
 void check42( bool doWrite ) {
+  uint32_t test = sizeofNAND / flashBufferSize ;
+
   byte value;
   uint32_t ii;
   uint32_t jj = 0, kk = 0;
@@ -89,18 +94,18 @@ void check42( bool doWrite ) {
       x42[ii] = 42;
     }
 
-
-    for ( ii = 0; ii < sizeofNAND / flashBufferSize; ii++ ) { //write pages
-      w25n01g_programDataLoad(ii * arraySize, x42, arraySize);
-      w25n01g_programExecute(ii * arraySize);
+    for ( ii = 0; ii < test; ii++ ) { //write pages
+        w25n01g_programDataLoad(ii * arraySize, x42, arraySize);
     }
 
     Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
-  }
+  }  //end doWrite
+
+
   Serial.print("    NAND ============================ check42() : COMPARE !!!!\n");
   my_us = 0;
   w25n01g_writeEnable(false);
-  for ( ii = 0; ii < sizeofNAND / flashBufferSize; ii++ ) {
+  for ( ii = 0; ii < test; ii++ ) {
     w25n01g_readBytes(ii * arraySize, x42, arraySize);
 
     for (uint16_t ik = 0; ik < arraySize; ik++) {

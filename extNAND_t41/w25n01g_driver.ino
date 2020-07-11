@@ -362,6 +362,44 @@ static void w25n01g_programExecute(uint32_t Address)
     w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_PROGRAM_MS);
 }
 
+void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int length )
+{
+    uint16_t startAddress = Address;
+    uint16_t columnStart = W25N01G_LINEAR_TO_COLUMN(Address);
+    uint16_t startPage = W25N01G_LINEAR_TO_PAGE(Address);
+    uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii; 
+    uint16_t newStartAddr;
+
+     if((length-Address) > W25N01G_PAGE_SIZE) { //Determine Number of Pages
+      numberFullPages = W25N01G_LINEAR_TO_PAGE(length) - startPage + 1;
+    }
+
+
+    //Check if first page a full if not transfer it
+    if(W25N01G_PAGE_SIZE - startAddress > 0) {
+      transferLength = W25N01G_PAGE_SIZE - startAddress;
+      w25n01g_randomProgramDataLoad(Address, *data, transferLength);
+      w25n01g_programExecute(Address);
+      remainingBytes = remainingBytes - transferLength;
+    }
+    newStartAddr = Address + transferLength;
+
+    for(ii = 0; ii < numberFullPages; ii++) {
+      newStartAddr = newStartAddr + W25N01G_PAGE_SIZE * ii;
+      w25n01g_programDataLoad(newStartAddr, *data, W25N01G_PAGE_SIZE);
+      w25n01g_programExecute(newStartAddr);
+      remainingBytes = remainingBytes - W25N01G_PAGE_SIZE;
+    }
+
+    //check last page for any remainder
+    if(remainingBytes > 0) {
+      //transfer from begining
+      w25n01g_randomProgramDataLoad(newStartAddr, *data, transferLength);
+      w25n01g_programExecute(newStartAddr);
+    }
+
+}
+
 /**
  * Read `length` bytes into the provided `buffer` from the flash starting from the given `address` (which need not lie
  * on a page boundary).
