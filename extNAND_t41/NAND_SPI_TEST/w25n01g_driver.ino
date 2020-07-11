@@ -306,6 +306,7 @@ void w25n01g_deviceErase()
         Serial.print(".");
         if((block % 128) == 0) Serial.println();
      }
+     Serial.println();
 }
 
 static void w25n01g_programDataLoad(uint16_t Address, const uint8_t *data, int length)
@@ -370,15 +371,16 @@ void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int leng
     uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii; 
     uint16_t newStartAddr;
 
-     if((length-Address) > W25N01G_PAGE_SIZE) { //Determine Number of Pages
+     if( Address % W25N01G_PAGE_SIZE) { //Determine Number of Pages
       numberFullPages = W25N01G_LINEAR_TO_PAGE(length) - startPage + 1;
     }
 
+    w25n01g_waitForReady();
 
     //Check if first page a full if not transfer it
-    if(W25N01G_PAGE_SIZE - startAddress > 0) {
-      transferLength = W25N01G_PAGE_SIZE - startAddress;
-      w25n01g_randomProgramDataLoad(Address, *data, transferLength);
+    if(W25N01G_PAGE_SIZE*(startPage+1) - startAddress > 0) {
+      transferLength = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+      w25n01g_randomProgramDataLoad(Address, data, transferLength);
       w25n01g_programExecute(Address);
       remainingBytes = remainingBytes - transferLength;
     }
@@ -386,7 +388,7 @@ void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int leng
 
     for(ii = 0; ii < numberFullPages; ii++) {
       newStartAddr = newStartAddr + W25N01G_PAGE_SIZE * ii;
-      w25n01g_programDataLoad(newStartAddr, *data, W25N01G_PAGE_SIZE);
+      w25n01g_programDataLoad(newStartAddr, data, W25N01G_PAGE_SIZE);
       w25n01g_programExecute(newStartAddr);
       remainingBytes = remainingBytes - W25N01G_PAGE_SIZE;
     }
@@ -394,7 +396,7 @@ void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int leng
     //check last page for any remainder
     if(remainingBytes > 0) {
       //transfer from begining
-      w25n01g_randomProgramDataLoad(newStartAddr, *data, transferLength);
+      w25n01g_randomProgramDataLoad(newStartAddr, data, transferLength);
       w25n01g_programExecute(newStartAddr);
     }
 
@@ -420,7 +422,7 @@ void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int leng
 // (3) Issue READ_DATA on column address.
 // (4) Return transferLength.
 
-int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
+int w25n01g_readBytes_old(uint32_t address, uint8_t *data, int length)
 {
     w25n01g_writeEnable(false);
     uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
@@ -481,6 +483,99 @@ int w25n01g_readBytes(uint32_t address, uint8_t *data, int length)
 
     return transferLength;
 }
+
+int w25n01g_readBytes(uint32_t Address, uint8_t *data, int length)
+{
+    uint16_t startAddress = Address;
+    uint16_t columnStart = W25N01G_LINEAR_TO_COLUMN(Address);
+    uint16_t startPage = W25N01G_LINEAR_TO_PAGE(Address);
+    uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii; 
+    uint16_t newStartAddr;
+
+    if(Address % W25N01G_PAGE_SIZE) { //Determine Number of Pages
+      numberFullPages = W25N01G_LINEAR_TO_PAGE(length) - startPage + 1;
+    }
+
+    uint16_t bufTest = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+    //Check if first page is a full if not transfer it
+    if(bufTest > 0) {
+      if(bufTest > length) {
+        transferLength = length;
+      } else {
+        transferLength = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+      }
+      w25n01g_read(startAddress, data, transferLength);
+      remainingBytes = remainingBytes - transferLength;
+    }
+    newStartAddr = Address + transferLength;
+
+    for(ii = 0; ii < numberFullPages; ii++) {
+      newStartAddr = newStartAddr + W25N01G_PAGE_SIZE * ii;
+      w25n01g_read(newStartAddr, data, W25N01G_PAGE_SIZE);
+      remainingBytes = remainingBytes - W25N01G_PAGE_SIZE;
+    }
+    newStartAddr = Address + transferLength;
+
+    //check last page for any remainder
+    if(remainingBytes > 0) {
+      //transfer from begining
+      w25n01g_read(newStartAddr, data, transferLength);
+    }
+
+}
+
+
+void w25n01g_read(uint32_t address, uint8_t *data, int length)
+{
+    uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
+    w25n01g_waitForReady();
+
+    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, W25N01G_PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+    FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+    flexspi_ip_command(12, flashBaseAddr + targetPage);
+    //Serial.println("Write Page Addr Complete");
+
+    w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
+
+    uint16_t column = W25N01G_LINEAR_TO_COLUMN(address);
+
+    // XXX Don't need this?
+    w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
+    if (!w25n01g_waitForReady()) {
+        Serial.println("READ Command TIMEOUT !!!");
+    }
+
+
+   flexspi_ip_read(14, flashBaseAddr + column, data, length);
+       
+    // XXX Don't need this?
+    w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
+    if (!w25n01g_waitForReady()) {
+        Serial.println("READ TIMEOUT !!!");
+    }
+
+
+
+    // Check ECC
+    uint8_t statReg = w25n01g_readStatusRegister(W25N01G_STAT_REG, false);
+    uint8_t eccCode = W25N01G_STATUS_FLAG_ECC(statReg);
+
+    switch (eccCode) {
+        case 0: // Successful read, no ECC correction
+            break;
+        case 1: // Successful read with ECC correction
+        case 2: // Uncorrectable ECC in a single page
+        case 3: // Uncorrectable ECC in multiple pages
+            //w25n01g_addError(address, eccCode);
+            Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
+            w25n01g_deviceReset();
+            break;
+    }
+
+}
+
+
+
 
 /* Not used yet */
 void w25n01g_setBufMode(uint8_t bufMode) {

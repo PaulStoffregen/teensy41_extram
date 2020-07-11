@@ -42,10 +42,9 @@ void setup(){
 
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
-    w25n01g_writeEnable(false);
     w25n01g_readBytes(0, buffer, 16);
 
-    for(uint16_t i = 0; i < 32; i++) {
+    for(uint16_t i = 0; i < 16; i++) {
       Serial.printf("0x%02x, ",buffer[i]);
     } Serial.println();
 
@@ -59,14 +58,14 @@ Dprint( (char *)beefy )
     //w25n01g_programDataLoad(4000, buffer, 20);
     //w25n01g_randomProgramDataLoad(4000, buffer, 20);
     //w25n01g_programExecute(4000);
-    w25n01g_programDataLoad(4000, buffer, 20);
+    w25n01g_programDataLoad(4000, buffer, sizeof(beefy));
 
    
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
     w25n01g_readBytes(4000, buffer, 20);
 
-    for(uint16_t i = 0; i < 20; i++) {
+    for(uint16_t i = 0; i < sizeof(beefy); i++) {
       Serial.printf("0x%02x[%c], ",buffer[i], buffer[i]);
     } Serial.println();  
 
