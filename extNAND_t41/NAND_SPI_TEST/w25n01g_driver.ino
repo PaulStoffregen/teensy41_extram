@@ -1,4 +1,5 @@
 
+
 FLASHMEM void configure_flash()
 {
     memset(flashID, 0, sizeof(flashID));
@@ -365,40 +366,73 @@ static void w25n01g_programExecute(uint32_t Address)
 
 void w25n01g_pageProgramDataLoad(uint16_t Address, const uint8_t *data, int length )
 {
+    uint8_t dataTemp[2048];
     uint16_t startAddress = Address;
     uint16_t columnStart = W25N01G_LINEAR_TO_COLUMN(Address);
     uint16_t startPage = W25N01G_LINEAR_TO_PAGE(Address);
     uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii; 
     uint16_t newStartAddr;
 
-     if( Address % W25N01G_PAGE_SIZE) { //Determine Number of Pages
-      numberFullPages = W25N01G_LINEAR_TO_PAGE(length) - startPage + 1;
+     if( Address % W25N01G_PAGE_SIZE == 0) { //Determine Number of Pages
+      numberFullPages = W25N01G_LINEAR_TO_PAGE(length);
     }
 
     w25n01g_waitForReady();
 
+    //Serial.printf("numberFullPages: %d\n", numberFullPages); Serial.flush();
+
+    remainingBytes = length;
+    uint16_t bufTest = W25N01G_PAGE_SIZE*(startPage) - startAddress;
+
+    //Serial.printf("startPage: %d, startAddress: %d\n", startPage,  startAddress); Serial.flush();
+    //Serial.printf("BufTest: %d\n", bufTest); Serial.flush();
+
+
     //Check if first page a full if not transfer it
-    if(W25N01G_PAGE_SIZE*(startPage+1) - startAddress > 0) {
-      transferLength = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+    if(bufTest > 0) {
+      if(length < bufTest) {
+        transferLength = length;
+      } else {
+        //Serial.println("Partial Transfer"); Serial.flush();
+        transferLength = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+      }
+      //Serial.printf("Transfer 1st Partial: %d\n", transferLength); Serial.flush();
       w25n01g_randomProgramDataLoad(Address, data, transferLength);
       w25n01g_programExecute(Address);
       remainingBytes = remainingBytes - transferLength;
     }
     newStartAddr = Address + transferLength;
+    //Serial.printf("newAddr after 1st Partial: %d\n", newStartAddr); Serial.flush();
+    //Serial.printf("RemainingBytes after Partial: %d\n", remainingBytes); Serial.flush();
 
     for(ii = 0; ii < numberFullPages; ii++) {
+      //Serial.println("Full Page Transfer"); Serial.flush();
       newStartAddr = newStartAddr + W25N01G_PAGE_SIZE * ii;
-      w25n01g_programDataLoad(newStartAddr, data, W25N01G_PAGE_SIZE);
+      //Serial.printf("newAddr for 1st FUll: %d\n", newStartAddr); Serial.flush();
+      //Serial.println(transferLength); Serial.flush();
+      //Serial.printf("Copy Src Start: %d, End: %d\n", transferLength+W25N01G_PAGE_SIZE * (ii),transferLength+W25N01G_PAGE_SIZE * (ii+1)-1);
+      //Serial.flush();
+       // https://stackoverflow.com/questions/11102029/how-can-i-copy-a-part-of-an-array-to-another-array-in-c
+      std::copy(data+transferLength+W25N01G_PAGE_SIZE * (ii), data+transferLength+W25N01G_PAGE_SIZE * (ii+1), dataTemp);
+      w25n01g_programDataLoad(newStartAddr, dataTemp, W25N01G_PAGE_SIZE);
       w25n01g_programExecute(newStartAddr);
       remainingBytes = remainingBytes - W25N01G_PAGE_SIZE;
     }
+    //Serial.printf("RemainingBytes after Full: %d\n", remainingBytes); //Serial.flush();
 
     //check last page for any remainder
     if(remainingBytes > 0) {
       //transfer from begining
-      w25n01g_randomProgramDataLoad(newStartAddr, data, transferLength);
+      //Serial.println("Last transfer"); //Serial.flush();
+      //Serial.println(transferLength+W25N01G_PAGE_SIZE*numberFullPages); //Serial.flush();
+      std::copy(data+transferLength+W25N01G_PAGE_SIZE*numberFullPages , data+remainingBytes, dataTemp);
+   
+      w25n01g_randomProgramDataLoad(newStartAddr, dataTemp, remainingBytes);
       w25n01g_programExecute(newStartAddr);
+
+    //Serial.printf("RemainingBytes after Last: %d\n", remainingBytes); Serial.flush();
     }
+    //Serial.println("FINISHE WRITE BYTES!");  Serial.flush();
 
 }
 
@@ -486,32 +520,43 @@ int w25n01g_readBytes_old(uint32_t address, uint8_t *data, int length)
 
 int w25n01g_readBytes(uint32_t Address, uint8_t *data, int length)
 {
+    uint8_t dataTemp[2048];
     uint16_t startAddress = Address;
     uint16_t columnStart = W25N01G_LINEAR_TO_COLUMN(Address);
     uint16_t startPage = W25N01G_LINEAR_TO_PAGE(Address);
     uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii; 
     uint16_t newStartAddr;
 
-    if(Address % W25N01G_PAGE_SIZE) { //Determine Number of Pages
-      numberFullPages = W25N01G_LINEAR_TO_PAGE(length) - startPage + 1;
+    if(Address % W25N01G_PAGE_SIZE == 0) { //Determine Number of Pages
+      numberFullPages = W25N01G_LINEAR_TO_PAGE(length);
     }
 
-    uint16_t bufTest = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
+    remainingBytes = length;
+    uint16_t bufTest = W25N01G_PAGE_SIZE*(startPage) - startAddress;
+
     //Check if first page is a full if not transfer it
-    if(bufTest > 0) {
-      if(bufTest > length) {
+    if(length < bufTest) {
+      if(length < bufTest) {
         transferLength = length;
       } else {
+        //Serial.println("Partial Transfer");
         transferLength = W25N01G_PAGE_SIZE*(startPage+1) - startAddress;
       }
       w25n01g_read(startAddress, data, transferLength);
       remainingBytes = remainingBytes - transferLength;
     }
     newStartAddr = Address + transferLength;
+    //Serial.printf("newAddr after 1st Partial: %d\n", newStartAddr); 
+    //Serial.printf("RemainingBytes after Partial: %d\n", remainingBytes);
+
 
     for(ii = 0; ii < numberFullPages; ii++) {
       newStartAddr = newStartAddr + W25N01G_PAGE_SIZE * ii;
-      w25n01g_read(newStartAddr, data, W25N01G_PAGE_SIZE);
+      w25n01g_read(newStartAddr, dataTemp, W25N01G_PAGE_SIZE);
+      for(uint16_t ic = 0; ic < W25N01G_PAGE_SIZE; ic++){
+        data[ic+transferLength+W25N01G_PAGE_SIZE * ii] = dataTemp[ic];
+        //Serial.printf("%d, %d, %d\n", ii, ic+transferLength+W25N01G_PAGE_SIZE * ii, data[ic+transferLength+W25N01G_PAGE_SIZE * ii]);
+      }
       remainingBytes = remainingBytes - W25N01G_PAGE_SIZE;
     }
     newStartAddr = Address + transferLength;

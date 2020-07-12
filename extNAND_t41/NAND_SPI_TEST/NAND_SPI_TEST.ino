@@ -1,3 +1,5 @@
+#include <algorithm> 
+
 #include "defines.h"
 #define DHprint( a ) { Serial.print( #a); Serial.print(": ");Serial.println ( (uint32_t)a,HEX ); }
 #define DTprint( a ) { Serial.println( #a); }
@@ -10,9 +12,9 @@ uint8_t valERAM;
 const uint32_t  sizeofNAND= 134217728;
 
 //only used for check42 or check24
-uint16_t arraySize = 2048;
-uint8_t x42[2048];
-uint16_t flashBufferSize = (2048 + 64) * 1;  //2,112 bytes, 64 ecc + 2048 data buffer
+uint16_t arraySize = 4096;
+uint8_t x42[4096];
+uint16_t flashBufferSize = (2048 + 64) * 2;  //2,112 bytes, 64 ecc + 2048 data buffer
 
 
 
@@ -38,13 +40,13 @@ void setup(){
     //w25n01g_programDataLoad(0, buffer, 16);
     //w25n01g_randomProgramDataLoad(0, buffer, 16);
     //w25n01g_programExecute(0);
-    w25n01g_programDataLoad(0, buffer, 16);
+    w25n01g_pageProgramDataLoad(4094, buffer, 16);
 
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
-    w25n01g_readBytes(0, buffer, 16);
+    w25n01g_readBytes(4094, buffer, 16);
 
-    for(uint16_t i = 0; i < 16; i++) {
+    for(uint16_t i = 0; i < 32; i++) {
       Serial.printf("0x%02x, ",buffer[i]);
     } Serial.println();
 
@@ -58,16 +60,26 @@ Dprint( (char *)beefy )
     //w25n01g_programDataLoad(4000, buffer, 20);
     //w25n01g_randomProgramDataLoad(4000, buffer, 20);
     //w25n01g_programExecute(4000);
-    w25n01g_programDataLoad(4000, buffer, sizeof(beefy));
+    w25n01g_pageProgramDataLoad(4000, buffer, sizeof(beefy));
 
    
     //Serial.println("Reading Data");
     memset(buffer, 0, 2048);
     w25n01g_readBytes(4000, buffer, 20);
 
-    for(uint16_t i = 0; i < sizeof(beefy); i++) {
+    for(uint16_t i = 0; i < 96; i++) {
       Serial.printf("0x%02x[%c], ",buffer[i], buffer[i]);
     } Serial.println();  
+
+    memset(x42, 42, arraySize);
+    w25n01g_pageProgramDataLoad(0, x42, arraySize);
+    memset(x42, 0, arraySize);
+    w25n01g_readBytes(0, x42, arraySize);
+
+    for(uint16_t i = 0; i < arraySize; i++) {
+      Serial.printf("0x%02x, ",x42[i]);
+      if(i % 100 == 0) Serial.println();
+    } Serial.println();
 
     Serial.println();
     check42(true);
@@ -89,12 +101,10 @@ void check42( bool doWrite ) {
     Serial.printf("\t\tNAND length 0x%X element size of %d\n", sizeofNAND, sizeof(valERAM));
     my_us = 0;
 
-    for ( ii = 0; ii < arraySize; ii++ ) {  //write pages :)
-      x42[ii] = 42;
-    }
+    memset(x42, 42, arraySize);
 
     for ( ii = 0; ii < test; ii++ ) { //write pages
-        w25n01g_programDataLoad(ii * arraySize, x42, arraySize);
+        w25n01g_pageProgramDataLoad(ii * arraySize, x42, arraySize);
     }
 
     Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
@@ -104,9 +114,10 @@ void check42( bool doWrite ) {
   Serial.print("    NAND ============================ check42() : COMPARE !!!!\n");
   my_us = 0;
   w25n01g_writeEnable(false);
-  for ( ii = 0; ii < test; ii++ ) {
-    w25n01g_readBytes(ii * arraySize, x42, arraySize);
 
+  for ( ii = 0; ii < test; ii++ ) {
+    memset(x42, 0, arraySize);
+    w25n01g_readBytes(ii * arraySize, x42, arraySize);
     for (uint16_t ik = 0; ik < arraySize; ik++) {
       if ( 42 != x42[ik] ) {
         if ( ik != 0 ) {
