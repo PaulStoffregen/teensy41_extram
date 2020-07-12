@@ -534,6 +534,11 @@ int w25n01g_readBytes(uint32_t Address, uint8_t *data, int length)
     remainingBytes = length;
     uint16_t bufTest = W25N01G_PAGE_SIZE*(startPage) - startAddress;
 
+    w25n01g_setTimeout(W25N01G_TIMEOUT_PAGE_READ_MS);
+    if (!w25n01g_waitForReady()) {
+        Serial.println("Returned: Waiting for ready expired!");
+    }
+
     //Check if first page is a full if not transfer it
     if(length < bufTest) {
       if(length < bufTest) {
@@ -564,7 +569,10 @@ int w25n01g_readBytes(uint32_t Address, uint8_t *data, int length)
     //check last page for any remainder
     if(remainingBytes > 0) {
       //transfer from begining
-      w25n01g_read(newStartAddr, data, transferLength);
+      w25n01g_read(newStartAddr, dataTemp, remainingBytes);
+      for(uint16_t ic = 0; ic < remainingBytes; ic++){
+        data[ic+transferLength+numberFullPages * W25N01G_PAGE_SIZE] = dataTemp[ic];
+      }    
     }
 
 }

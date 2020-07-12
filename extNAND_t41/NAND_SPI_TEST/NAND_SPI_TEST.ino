@@ -26,7 +26,7 @@ void setup(){
     configure_flash();
     w25n01g_init();
 
-    delay(500);
+    delay(1000);
 
     check42(false);
 
