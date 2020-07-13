@@ -37,12 +37,7 @@ void setup() {
 
   memset(buffer, 0xFF, 2048);
   for (uint16_t i = 0; i < 2048; i++) buffer[i] = i;
-
-  //Serial.println("Loading data");
-  //myNAND.programDataLoad(0, buffer, 16);
-  //myNAND.randomProgramDataLoad(0, buffer, 16);
-  //myNAND.programExecute(0);
-  myNAND.pageProgramDataLoad(4094, buffer, 16);
+  myNAND.writeBytes(4094, buffer, 16);
 
   //Serial.println("Reading Data");
   memset(buffer, 0, 2048);
@@ -59,10 +54,7 @@ void setup() {
   memset(buffer, 0, 2048);
   for(uint8_t j = 0; j < sizeof(beefy); j++) buffer[j] = beefy[j];
 
-  //myNAND.programDataLoad(4000, buffer, 20);
-  //myNAND.randomProgramDataLoad(4000, buffer, 20);
-  //myNAND.programExecute(4000);
-  myNAND.pageProgramDataLoad(4000, buffer, sizeof(beefy));
+  myNAND.writeBytes(4000, buffer, sizeof(beefy));
 
 
   //Serial.println("Reading Data");
@@ -74,7 +66,7 @@ void setup() {
   } Serial.println();
 
   memset(x42, 42, arraySize);
-  myNAND.pageProgramDataLoad(0, x42, arraySize);
+  myNAND.writeBytes(0, x42, arraySize);
   memset(x42, 0, arraySize);
   myNAND.readBytes(0, x42, arraySize);
 
@@ -123,7 +115,7 @@ void check42( bool doWrite ) {
   for ( ii = 0; ii < test; ii++ ) {
     memset(x42, 0, arraySize);
     //myNAND.readBytes(ii * arraySize, x42, arraySize);
-    myNAND.readBytes_old(ii * arraySize, x42, arraySize);
+    myNAND.readSector(ii * arraySize, x42, arraySize);
     for (uint16_t ik = 0; ik < arraySize; ik++) {
       if ( 42 != x42[ik] ) {
         if ( ik != 0 ) {

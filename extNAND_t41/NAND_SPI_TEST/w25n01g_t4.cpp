@@ -369,7 +369,7 @@ void w25n01g_t4::programExecute(uint32_t Address)
   setTimeout(TIMEOUT_PAGE_PROGRAM_MS);
 }
 
-void w25n01g_t4::pageProgramDataLoad(uint16_t Address, const uint8_t *data, int length )
+void w25n01g_t4::writeBytes(uint16_t Address, const uint8_t *data, int length )
 {
   uint8_t dataTemp[2048];
   uint16_t startAddress = Address;
@@ -439,27 +439,8 @@ void w25n01g_t4::pageProgramDataLoad(uint16_t Address, const uint8_t *data, int 
 
 }
 
-/**
- * Read `length` bytes into the provided `buffer` from the flash starting from the given `address` (which need not lie
- * on a page boundary).
- *
- * Waits up to TIMEOUT_PAGE_READ_MS milliseconds for the flash to become ready before reading.
- *
- * The number of bytes actually read is returned, which can be zero if an error or timeout occurred.
- */
 
-// Continuous read mode (BUF = 0):
-// (1) "Page Data Read" command is executed for the page pointed by address
-// (2) "Read Data" command is executed for bytes not requested and data are discarded
-// (3) "Read Data" command is executed and data are stored directly into caller's buffer
-//
-// Buffered read mode (BUF = 1), non-read ahead
-// (1) If currentBufferPage != requested page, then issue PAGE_DATA_READ on requested page.
-// (2) Compute transferLength as smaller of remaining length and requested length.
-// (3) Issue READ_DATA on column address.
-// (4) Return transferLength.
-
-int w25n01g_t4::readBytes_old(uint32_t address, uint8_t *data, int length)
+int w25n01g_t4::readSector(uint32_t address, uint8_t *data, int length)
 {
   writeEnable(false);
   uint32_t targetPage = LINEAR_TO_PAGE(address);

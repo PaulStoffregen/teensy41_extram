@@ -156,8 +156,8 @@ public:
 	static void programDataLoad(uint16_t Address, const uint8_t *data, int length);
 	static void randomProgramDataLoad(uint16_t Address, const uint8_t *data, int length);
 	static void programExecute(uint32_t Address);
-	void pageProgramDataLoad(uint16_t Address, const uint8_t *data, int length );
-	int readBytes_old(uint32_t address, uint8_t *data, int length);
+	void writeBytes(uint16_t Address, const uint8_t *data, int length );
+	int readSector(uint32_t address, uint8_t *data, int length);
 	int readBytes(uint32_t Address, uint8_t *data, int length);
 	void read(uint32_t address, uint8_t *data, int length);
 	void setBufMode(uint8_t bufMode) ;
