@@ -1,6 +1,6 @@
 
 
-#include "w25n01g_t4.h"
+#include <w25n01g_t4.h>
 
 #define DHprint( a ) { Serial.print( #a); Serial.print(": ");Serial.println ( (uint32_t)a,HEX ); }
 #define DTprint( a ) { Serial.println( #a); }
@@ -28,34 +28,41 @@ void setup() {
 
   myNAND.begin();
 
-  delay(1000);
+  //check42(false);
+  Serial.println("Reading Data");
+  memset(buffer, 0, 2048);
+  myNAND.readBytes(0, buffer, 16);
 
-  check42(false);
+  for (uint16_t i = 0; i < 16; i++) {
+    Serial.printf("0x%02x, ", buffer[i]);
+  } Serial.println();
 
+  Serial.println();
+ 
   //Lets try an erase
   //myNAND.deviceErase();  //Erase chip
 
-  memset(buffer, 0xFF, 2048);
+  memset(buffer, 0, 2048);
   for (uint16_t i = 0; i < 2048; i++) buffer[i] = i;
-  myNAND.writeBytes(4094, buffer, 16);
+  myNAND.writeBytes(0, buffer, 16);
+
 
   //Serial.println("Reading Data");
   memset(buffer, 0, 2048);
-  myNAND.readBytes(4094, buffer, 16);
+  myNAND.readBytes(4096, buffer, 16);
 
   for (uint16_t i = 0; i < 16; i++) {
     Serial.printf("0x%02x, ", buffer[i]);
   } Serial.println();
 
 
-  const uint8_t beefy[] = "DEADBEEFdeadbeef\n";
+  const uint8_t beefy[] = "DEADBEEFdeadbeef";
   //Serial.println("Loading data");
   Dprint( (char *)beefy )
+  Serial.println();
   memset(buffer, 0, 2048);
   for(uint8_t j = 0; j < sizeof(beefy); j++) buffer[j] = beefy[j];
-
   myNAND.writeBytes(4000, buffer, sizeof(beefy));
-
 
   //Serial.println("Reading Data");
   memset(buffer, 0, 2048);
@@ -65,19 +72,9 @@ void setup() {
     Serial.printf("0x%02x[%c], ", buffer[i], buffer[i]);
   } Serial.println();
 
-  memset(x42, 42, arraySize);
-  myNAND.writeBytes(0, x42, arraySize);
-  memset(x42, 0, arraySize);
-  myNAND.readBytes(0, x42, arraySize);
+  //check42(true);
 
-  for (uint16_t i = 0; i < arraySize; i++) {
-    Serial.printf("0x%02x, ", x42[i]);
-    if (i % 100 == 0) Serial.println();
-  } Serial.println();
-
-  Serial.println();
-  check42(true);
-}
+ }
 
 void loop() {}
 
@@ -85,6 +82,7 @@ void loop() {}
 uint32_t errCnt = 0;
 elapsedMicros my_us;
 void check42( bool doWrite ) {
+
   uint32_t test = sizeofNAND / flashBufferSize ;
 
   byte value;
@@ -101,7 +99,7 @@ void check42( bool doWrite ) {
       //Serial.println("Loading data");
       myNAND.programDataLoad(ii * arraySize, x42, arraySize);
       myNAND.programExecute((ii * arraySize));
-      //myNAND.pageProgramDataLoad(ii * arraySize, x42, arraySize);
+      //myNAND.writeBytes(ii * arraySize, x42, arraySize);
     }
 
     Serial.printf( "\t took %lu elapsed us\n", (uint32_t)my_us );
@@ -138,6 +136,5 @@ void check42( bool doWrite ) {
   errCnt += jj;
   Serial.printf( "\tFound 42 in NAND 0x%X Times\n", sizeofNAND - jj );
 }
-
 
 

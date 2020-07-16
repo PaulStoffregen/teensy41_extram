@@ -6,6 +6,21 @@ w25n01g_t4::w25n01g_t4() {}
 void w25n01g_t4::begin() {
   configure_flash();
   init();
+
+  //deviceReset();
+
+  while(!isReady()) {};
+
+  // No protection, WP-E off, WP-E prevents use of IO2
+  writeStatusRegister(PROT_REG, PROT_CLEAR);
+  readStatusRegister(PROT_REG, false);
+
+  // Buffered read mode (BUF = 1), ECC enabled (ECC = 1)
+  writeStatusRegister(CONF_REG, CONFIG_ECC_ENABLE | CONFIG_BUFFER_READ_MODE);
+  //writeStatusRegister(CONF_REG, CONFIG_ECC_ENABLE);
+  //writeStatusRegister(CONF_REG,  CONFIG_BUFFER_READ_MODE);
+  readStatusRegister(CONF_REG, false);
+
 }
 
 
@@ -17,13 +32,13 @@ void w25n01g_t4::configure_flash()
 
   FLEXSPI2_FLSHA2CR0 = 134218;          //Flash Size in KByte, 1F400
   FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
-                       | FLEXSPI_FLSHCR1_CAS(12)
+                       | FLEXSPI_FLSHCR1_CAS(11)
                        | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
                        | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
 
-  FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6)    //Sequence Index for AHB Write triggered Command
+  FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(15)                         //Sequence Index for AHB Write triggered Command
                        | FLEXSPI_FLSHCR2_AWRSEQNUM(0)                      //Sequence Number for AHB Read triggered Command in LUT.
-                       | FLEXSPI_FLSHCR2_ARDSEQID(5)                       //Sequence Index for AHB Read triggered Command in LUT
+                       | FLEXSPI_FLSHCR2_ARDSEQID(14)                       //Sequence Index for AHB Read triggered Command in LUT
                        | FLEXSPI_FLSHCR2_ARDSEQNUM(0);                     //Sequence Number for AHB Read triggered Command in LUT.
 
   // cmd index 7 = read ID bytes, 4*index number
@@ -32,12 +47,13 @@ void w25n01g_t4::configure_flash()
 
   // cmd index 8 = read Status register
   // set in function readStatusRegister(uint8_t reg, bool dump)
+  // cmd index 8 = write Status register
+  // see function writeStatusRegister(uint8_t reg, uint8_t data)
 
   //cmd index 9 - WG reset, see function deviceReset()
   FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, DEVICE_RESET);
 
-  // cmd index 10 = write Status register
-  // see function writeStatusRegister(uint8_t reg, uint8_t data)
+  //cmd index 10 - read BBLUT
 
   // cmd 11 index write enable cmd
   // see function writeEnable(bool wpE)
@@ -52,15 +68,18 @@ void w25n01g_t4::configure_flash()
   // programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
   // and
   // randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
-
+  //FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, RANDOM_PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
+  //FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
+  
   //cmd 14 program read Data -- reserved
   //FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, FAST_READ_QUAD_IO) | LUT1(CADDR_SDR, PINS4, 0x10);
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, FAST_READ_QUAD_OUTPUT) | LUT1(CADDR_SDR, PINS1, 0x10);
-  FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS4, 8) | LUT1(READ_SDR, PINS4, 1);
+  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, READ_DATA) | LUT1(CADDR_SDR, PINS1, 0x10);
+  FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS1, 8) | LUT1(READ_SDR, PINS1, 1);
 
   //cmd 15 - program execute
-  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, PROGRAM_EXECUTE) | LUT1(DUMMY_SDR, PINS1, 8);
-  FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x20);
+  //FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, PROGRAM_EXECUTE) | LUT1(DUMMY_SDR, PINS1, 8);
+  //FLEXSPI2_LUT61 = LUT0(ADDR_SDR, PINS1, 0x10);
+  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, PROGRAM_EXECUTE) | LUT1(ADDR_SDR, PINS1, 0x18);
 
 }
 
@@ -213,11 +232,11 @@ void w25n01g_t4::writeStatusRegister(uint8_t reg, uint8_t data)
 {
   uint8_t buf[1];
   buf[0] = data;
-  // cmd index 10 = write Status register
-  FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, WRITE_STATUS_REG) | LUT1(CMD_SDR, PINS1, reg);
-  FLEXSPI2_LUT41 = LUT0(WRITE_SDR, PINS1, 1);
+  // cmd index 8 = write Status register
+  FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, WRITE_STATUS_REG) | LUT1(CMD_SDR, PINS1, reg);
+  FLEXSPI2_LUT33 = LUT0(WRITE_SDR, PINS1, 1);
 
-  flexspi_ip_write(10, flashBaseAddr, buf, 1);
+  flexspi_ip_write(8, flashBaseAddr, buf, 1);
 
 }
 
@@ -316,7 +335,7 @@ void deviceErase()
   Serial.println();
 }
 
-void w25n01g_t4::programDataLoad(uint16_t Address, const uint8_t *data, int length)
+void w25n01g_t4::programDataLoad(uint32_t Address, const uint8_t *data, int length)
 {
   //DTprint(programDataLoad);
   writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
@@ -324,9 +343,8 @@ void w25n01g_t4::programDataLoad(uint16_t Address, const uint8_t *data, int leng
 
   waitForReady();
 
-
-  FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, QUAD_PROGRAM_DATA_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
-  FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
+  FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, PROGRAM_DATA_LOAD) | LUT1(CADDR_SDR, PINS1, 0x10);
+  FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS1, 1);
   flexspi_ip_write(13, flashBaseAddr + columnAddress, data, length);
 
   setTimeout(TIMEOUT_PAGE_PROGRAM_MS);
@@ -337,7 +355,7 @@ void w25n01g_t4::programDataLoad(uint16_t Address, const uint8_t *data, int leng
 
 }
 
-void w25n01g_t4::randomProgramDataLoad(uint16_t Address, const uint8_t *data, int length)
+void w25n01g_t4::randomProgramDataLoad(uint32_t Address, const uint8_t *data, int length)
 {
   writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
   uint16_t columnAddress = LINEAR_TO_COLUMN(Address);
@@ -369,14 +387,16 @@ void w25n01g_t4::programExecute(uint32_t Address)
   setTimeout(TIMEOUT_PAGE_PROGRAM_MS);
 }
 
-void w25n01g_t4::writeBytes(uint16_t Address, const uint8_t *data, int length )
+void w25n01g_t4::writeBytes(uint32_t Address, const uint8_t *data, int length )
 {
+  writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
+
   uint8_t dataTemp[2048];
-  uint16_t startAddress = Address;
+  uint32_t startAddress = Address;
   uint16_t columnStart = LINEAR_TO_COLUMN(Address);
-  uint16_t startPage = LINEAR_TO_PAGE(Address);
+  uint32_t startPage = LINEAR_TO_PAGE(Address);
   uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii;
-  uint16_t newStartAddr;
+  uint32_t newStartAddr;
 
   if ( Address % PAGE_SIZE == 0) { //Determine Number of Pages
     numberFullPages = LINEAR_TO_PAGE(length);
@@ -384,10 +404,10 @@ void w25n01g_t4::writeBytes(uint16_t Address, const uint8_t *data, int length )
 
   waitForReady();
 
-  //Serial.printf("numberFullPages: %d\n", numberFullPages); Serial.flush();
+  Serial.printf("numberFullPages: %d\n", numberFullPages); Serial.flush();
 
   remainingBytes = length;
-  uint16_t bufTest = PAGE_SIZE * (startPage) - startAddress;
+  uint32_t bufTest = PAGE_SIZE * (startPage + 1) - startAddress;
 
   //Serial.printf("startPage: %d, startAddress: %d\n", startPage,  startAddress); Serial.flush();
   //Serial.printf("BufTest: %d\n", bufTest); Serial.flush();
@@ -398,7 +418,7 @@ void w25n01g_t4::writeBytes(uint16_t Address, const uint8_t *data, int length )
     if (length < bufTest) {
       transferLength = length;
     } else {
-      //Serial.println("Partial Transfer"); Serial.flush();
+      //Serial.println("1st Partial Transfer "); Serial.flush();
       transferLength = PAGE_SIZE * (startPage + 1) - startAddress;
     }
     //Serial.printf("Transfer 1st Partial: %d\n", transferLength); Serial.flush();
@@ -419,23 +439,24 @@ void w25n01g_t4::writeBytes(uint16_t Address, const uint8_t *data, int length )
     //Serial.flush();
     // https://stackoverflow.com/questions/11102029/how-can-i-copy-a-part-of-an-array-to-another-array-in-c
     std::copy(data + transferLength + PAGE_SIZE * (ii), data + transferLength + PAGE_SIZE * (ii + 1), dataTemp);
-    programDataLoad(newStartAddr, dataTemp, PAGE_SIZE);
+    randomProgramDataLoad(newStartAddr, dataTemp, PAGE_SIZE);
     programExecute(newStartAddr);
     remainingBytes = remainingBytes - PAGE_SIZE;
   }
-  //Serial.printf("RemainingBytes after Full: %d\n", remainingBytes); //Serial.flush();
+  Serial.printf("RemainingBytes after Full: %d\n", remainingBytes); //Serial.flush();
 
   //check last page for any remainder
   if (remainingBytes > 0) {
     //transfer from begining
-    //Serial.println("Last transfer"); //Serial.flush();
-    //Serial.println(transferLength+PAGE_SIZE*numberFullPages); //Serial.flush();
+    //Serial.println("Last transfer");
+    //Serial.println(transferLength+PAGE_SIZE*numberFullPages); 
     std::copy(data + transferLength + PAGE_SIZE * numberFullPages , data + remainingBytes, dataTemp);
+    writeEnable(true);   //sets the WEL in Status Reg to 1 (bit 2)
     randomProgramDataLoad(newStartAddr, dataTemp, remainingBytes);
     programExecute(newStartAddr);
-    //Serial.printf("RemainingBytes after Last: %d\n", remainingBytes); Serial.flush();
+    //Serial.printf("RemainingBytes after Last: %d\n", remainingBytes); 
   }
-  //Serial.println("FINISHE WRITE BYTES!");  Serial.flush();
+  //Serial.println("FINISHED WRITE BYTES!");
 
 }
 
@@ -502,21 +523,21 @@ int w25n01g_t4::readSector(uint32_t address, uint8_t *data, int length)
   return transferLength;
 }
 
-int w25n01g_t4::readBytes(uint32_t Address, uint8_t *data, int length)
+void w25n01g_t4::readBytes(uint32_t Address, uint8_t *data, int length)
 {
   uint8_t dataTemp[2048];
-  uint16_t startAddress = Address;
+  uint32_t startAddress = Address;
   uint16_t columnStart = LINEAR_TO_COLUMN(Address);
-  uint16_t startPage = LINEAR_TO_PAGE(Address);
-  uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii;
-  uint16_t newStartAddr;
+  uint32_t startPage = LINEAR_TO_PAGE(Address);
+  uint32_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii;
+  uint32_t newStartAddr;
 
   if (Address % PAGE_SIZE == 0) { //Determine Number of Pages
     numberFullPages = LINEAR_TO_PAGE(length);
   }
 
   remainingBytes = length;
-  uint16_t bufTest = PAGE_SIZE * (startPage) - startAddress;
+  uint32_t bufTest = PAGE_SIZE * (startPage+1) - startAddress;
 
   setTimeout(TIMEOUT_PAGE_READ_MS);
   if (!waitForReady()) {
@@ -567,8 +588,10 @@ void w25n01g_t4::read(uint32_t address, uint8_t *data, int length)
   uint32_t targetPage = LINEAR_TO_PAGE(address);
   waitForReady();
 
-  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
-  FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+  //FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+  //FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x18);
+  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(ADDR_SDR, PINS1, 0x18);
+
   flexspi_ip_command(12, flashBaseAddr + targetPage);
   //Serial.println("Write Page Addr Complete");
 
@@ -604,40 +627,88 @@ void w25n01g_t4::read(uint32_t address, uint8_t *data, int length)
   case 2: // Uncorrectable ECC in a single page
   case 3: // Uncorrectable ECC in multiple pages
     //addError(address, eccCode);
-    Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
+    Serial.printf("ECC Error (addr, code): %d, %x\n", address, eccCode);
     deviceReset();
     break;
   }
 
 }
 
+void w25n01g_t4::readECC(uint32_t address, uint8_t *data, int length)
+{
+  uint32_t targetPage = LINEAR_TO_PAGEECC(address) ;
+  waitForReady();
 
-/* Not used yet */
-void w25n01g_t4::setBufMode(uint8_t bufMode) {
-  /* bufMode = 1:
-    * The Buffer Read Mode (BUF=1) requires a Column Address to start outputting the
-    * existing data inside the Data Buffer, and once it reaches the end of the data
-    * buffer (Byte 2,111)
-    *
-   * bufMode = 0:
-    * The Continuous Read Mode (BUF=0) doesn’t require the starting Column Address.
-    * The device will always start output the data from the first column (Byte 0) of the
-    * Data buffer, and once the end of the data buffer (Byte 2,048) is reached, the data
-    * output will continue through the next memory page.
-    *
-    * With Continuous Read Mode, it is possible to read out the entire memory array using
-    * a single read command.
-    */
+  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+  FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+  flexspi_ip_command(12, flashBaseAddr + targetPage);
+  //Serial.println("Write Page Addr Complete");
 
-  // Set mode after device reset.
+  setTimeout(TIMEOUT_PAGE_READ_MS);
 
-  if (bufMode == 1) {
-    writeStatusRegister(CONF_REG, CONFIG_ECC_ENABLE | CONFIG_BUFFER_READ_MODE);
-  } else if (bufMode == 0) {
-    writeStatusRegister(CONF_REG, CONFIG_ECC_ENABLE);
-  } else {
-    Serial.println("Mode not supported !!!!");
+  uint16_t column = LINEAR_TO_COLUMNECC(address);
+
+  // XXX Don't need this?
+  setTimeout(TIMEOUT_PAGE_READ_MS);
+  if (!waitForReady()) {
+    Serial.println("READ Command TIMEOUT !!!");
   }
 
+
+  flexspi_ip_read(14, flashBaseAddr + column, data, length);
+
+  // XXX Don't need this?
+  setTimeout(TIMEOUT_PAGE_READ_MS);
+  if (!waitForReady()) {
+    Serial.println("READ TIMEOUT !!!");
+  }
+
+
+
+  // Check ECC
+  uint8_t statReg = readStatusRegister(STAT_REG, false);
+  uint8_t eccCode = STATUS_FLAG_ECC(statReg);
+
+  switch (eccCode) {
+  case 0: // Successful read, no ECC correction
+    break;
+  case 1: // Successful read with ECC correction
+  case 2: // Uncorrectable ECC in a single page
+  case 3: // Uncorrectable ECC in multiple pages
+    //addError(address, eccCode);
+    Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
+    deviceReset();
+    break;
+  }
 }
+
+void w25n01g_t4::readBBLUT()
+{
+    uint16_t LBA, PBA;
+    uint16_t temp;
+    uint16_t openEntries = 0;
+    uint8_t data[BBLUT_TABLE_ENTRY_COUNT * BBLUT_TABLE_ENTRY_SIZE];
+
+    FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, READ_BBM_LUT) | LUT1(DUMMY_SDR, 8, 1);
+    FLEXSPI2_LUT41 = LUT0(READ_SDR, PINS1, 1);
+    flexspi_ip_read(10, flashBaseAddr, data, sizeof(data));
+
+    Serial.println("Status of the links");
+    for(int i = 0, offset = 0 ; i < 20 ; i++, offset += 4) {
+      LBA = data[offset+ 0] << 8 | data[offset+ 1];
+      PBA =  data[offset+ 2] << 8 | data[offset+ 3]; 
+      if (LBA == 0x0000) {
+         openEntries++;
+      } else  {
+        Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA, PBA);
+        temp = LBA >> 14;
+        if(temp == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
+        if(temp == 4) Serial.println("\t    This link was enabled but its not valid any more!");
+        if(temp == 1) Serial.println("\t    Not Applicable!");
+      }
+    }
+    Serial.printf("OpenEntries: %d\n", openEntries);
+}
+
+
 

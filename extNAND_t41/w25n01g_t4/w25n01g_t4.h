@@ -24,6 +24,7 @@
 
 // Device size parameters
 #define PAGE_SIZE         2048
+#define PAGE_ECCSIZE	  2112
 #define PAGES_PER_BLOCK   64
 #define BLOCKS_PER_DIE    1024
 
@@ -57,7 +58,7 @@
 #define PROGRAM_EXECUTE                 0x10
 #define PAGE_DATA_READ                  0x13
 #define READ_DATA                       0x03
-#define FAST_READ                       0x1B
+#define FAST_READ                       0x0B
 #define FAST_READ_QUAD_OUTPUT           0x6B
 #define FAST_READ_QUAD_IO               0xEB
 
@@ -100,8 +101,10 @@
 #define BBLUT_STATUS_MASK    (BBLUT_STATUS_ENABLED | BBLUT_STATUS_INVALID)
 
 // Some useful defs and macros
+#define LINEAR_TO_COLUMNECC(laddr) ((laddr) % PAGE_ECCSIZE)
 #define LINEAR_TO_COLUMN(laddr) ((laddr) % PAGE_SIZE)
 #define LINEAR_TO_PAGE(laddr) ((laddr) / PAGE_SIZE)
+#define LINEAR_TO_PAGEECC(laddr) ((laddr) / PAGE_ECCSIZE)
 #define LINEAR_TO_BLOCK(laddr) (LINEAR_TO_PAGE(laddr) / PAGES_PER_BLOCK)
 #define BLOCK_TO_PAGE(block) ((block) * PAGES_PER_BLOCK)
 #define BLOCK_TO_LINEAR(block) (BLOCK_TO_PAGE(block) * PAGE_SIZE)
@@ -153,24 +156,23 @@ public:
 	static void writeEnable(bool wpE);
 	static void eraseSector(uint32_t address);
 	void deviceErase();
-	static void programDataLoad(uint16_t Address, const uint8_t *data, int length);
-	static void randomProgramDataLoad(uint16_t Address, const uint8_t *data, int length);
+	static void programDataLoad(uint32_t Address, const uint8_t *data, int length);
+	static void randomProgramDataLoad(uint32_t Address, const uint8_t *data, int length);
 	static void programExecute(uint32_t Address);
-	void writeBytes(uint16_t Address, const uint8_t *data, int length );
+	void writeBytes(uint32_t Address, const uint8_t *data, int length );
 	int readSector(uint32_t address, uint8_t *data, int length);
-	int readBytes(uint32_t Address, uint8_t *data, int length);
+	void readBytes(uint32_t Address, uint8_t *data, int length);
 	void read(uint32_t address, uint8_t *data, int length);
-	void setBufMode(uint8_t bufMode) ;
+	void readECC(uint32_t address, uint8_t *data, int length);
+	void readBBLUT();
 
-
+	static bool isReady();
+	static bool waitForReady();
 
 private:
 	static void flexspi_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length);
 	static void flexspi_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length);
 	static void flexspi_ip_command(uint32_t index, uint32_t addr);
-
-	static bool isReady();
-	static bool waitForReady();
 
 };
 
