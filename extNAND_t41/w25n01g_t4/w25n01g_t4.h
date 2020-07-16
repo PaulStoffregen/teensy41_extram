@@ -3,7 +3,7 @@
 #define _W25N01G_T4_H_
 
 #if !defined(ARDUINO_TEENSY41)
-#error "Sorry, extFlashSpiffs_t4 does works only with Teens 4.1"
+#error "Sorry, extFlashSpiffs_t4 only works only with Teensy 4.1"
 #endif
 
 #include <algorithm>

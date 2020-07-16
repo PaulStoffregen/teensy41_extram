@@ -1,4 +1,5 @@
 #include "w25n01g_t4.h"
+elapsedMillis timeout;
 
 
 w25n01g_t4::w25n01g_t4() {}
@@ -240,13 +241,6 @@ void w25n01g_t4::writeStatusRegister(uint8_t reg, uint8_t data)
 
 }
 
-
-void w25n01g_t4::setTimeout(uint32_t timeoutMillis)
-{
-  uint32_t now = millis();
-  timeoutAt = now + timeoutMillis;
-}
-
 void w25n01g_t4::deviceReset()
 {
   flexspi_ip_command(9, flashBaseAddr); //reset
@@ -272,17 +266,27 @@ bool w25n01g_t4::isReady()
   return ((status & STATUS_FLAG_BUSY) == 0);
 }
 
+void w25n01g_t4::setTimeout(uint32_t timeoutMillis)
+{
+  timeoutAt = timeoutMillis;
+}
+
 bool w25n01g_t4::waitForReady()
 {
+  timeout = 0;
+
   while (!w25n01g_t4::isReady()) {
-    uint32_t now = millis();
+    //uint32_t now = millis();
     //if (now >= timeoutAt) {
-    if (millis() - now >= timeoutAt) {
+    //if (millis() - now >= timeoutAt) {
+    //  return false;
+    //}
+    if(timeout > timeoutAt ) {
+      timeoutAt = 0;
       return false;
     }
   }
   timeoutAt = 0;
-
   return true;
 }
 
@@ -398,7 +402,7 @@ void w25n01g_t4::writeBytes(uint32_t Address, const uint8_t *data, int length )
 
   uint8_t dataTemp[2048];
   uint32_t startAddress = Address;
-  uint16_t columnStart = LINEAR_TO_COLUMN(Address);
+  //uint16_t columnStart = LINEAR_TO_COLUMN(Address);
   uint32_t startPage = LINEAR_TO_PAGE(Address);
   uint16_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii;
   uint32_t newStartAddr;
@@ -409,10 +413,10 @@ void w25n01g_t4::writeBytes(uint32_t Address, const uint8_t *data, int length )
 
   waitForReady();
 
-  Serial.printf("numberFullPages: %d\n", numberFullPages); Serial.flush();
+  //Serial.printf("numberFullPages: %d\n", numberFullPages); Serial.flush();
 
   remainingBytes = length;
-  uint32_t bufTest = PAGE_SIZE * (startPage + 1) - startAddress;
+  int32_t bufTest = PAGE_SIZE * (startPage + 1) - startAddress;
 
   //Serial.printf("startPage: %d, startAddress: %d\n", startPage,  startAddress); Serial.flush();
   //Serial.printf("BufTest: %d\n", bufTest); Serial.flush();
@@ -448,7 +452,7 @@ void w25n01g_t4::writeBytes(uint32_t Address, const uint8_t *data, int length )
     programExecute(newStartAddr);
     remainingBytes = remainingBytes - PAGE_SIZE;
   }
-  Serial.printf("RemainingBytes after Full: %d\n", remainingBytes); //Serial.flush();
+  //Serial.printf("RemainingBytes after Full: %d\n", remainingBytes); //Serial.flush();
 
   //check last page for any remainder
   if (remainingBytes > 0) {
@@ -532,7 +536,7 @@ void w25n01g_t4::readBytes(uint32_t Address, uint8_t *data, int length)
 {
   uint8_t dataTemp[2048];
   uint32_t startAddress = Address;
-  uint16_t columnStart = LINEAR_TO_COLUMN(Address);
+  //uint16_t columnStart = LINEAR_TO_COLUMN(Address);
   uint32_t startPage = LINEAR_TO_PAGE(Address);
   uint32_t transferLength = 0, numberFullPages = 0, remainingBytes = length, ii;
   uint32_t newStartAddr;
@@ -542,7 +546,7 @@ void w25n01g_t4::readBytes(uint32_t Address, uint8_t *data, int length)
   }
 
   remainingBytes = length;
-  uint32_t bufTest = PAGE_SIZE * (startPage+1) - startAddress;
+  int32_t bufTest = PAGE_SIZE * (startPage+1) - startAddress;
 
   setTimeout(TIMEOUT_PAGE_READ_MS);
   if (!waitForReady()) {
