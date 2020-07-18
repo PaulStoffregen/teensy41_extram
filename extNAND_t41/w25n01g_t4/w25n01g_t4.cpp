@@ -33,7 +33,7 @@ void w25n01g_t4::configure_flash()
 
   FLEXSPI2_FLSHA2CR0 = 134218;          //Flash Size in KByte, 1F400
   FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
-  //                     | FLEXSPI_FLSHCR1_CAS(11)
+                       | FLEXSPI_FLSHCR1_CAS(11)
                        | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
                        | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
 
