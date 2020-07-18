@@ -52,8 +52,8 @@ void setup() {
   uint8_t page = 1;
 
   //Serial.println("Non-Zero Test Write");
-  //for (uint16_t i = 0; i < 2048; i++) buffer[i] = i;
-  //myNAND.writeBytes(2048 * page, buffer, 128);
+  for (uint16_t i = 0; i < 2048; i++) buffer[i] = i;
+  myNAND.writeBytes(2048 * page, buffer, 128);
 
   Serial.println();
   Serial.println("Non-Zero Test Read");

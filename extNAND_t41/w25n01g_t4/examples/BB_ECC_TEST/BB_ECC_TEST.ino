@@ -26,7 +26,7 @@ void setup() {
       if(j % 1000 == 0) {
         Serial.print(".");
       }
-      if(255 != buffer[2049]){
+      if(255 != buffer[2048]){
         Serial.printf("\nBad Block Marker Found in ECC Block in Page %d\n", j);
       }
   }

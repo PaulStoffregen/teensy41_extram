@@ -137,6 +137,7 @@ static const uint32_t psramAddr =     0x070000000;
 static char flashID[3];
 
 static uint32_t currentPage = UINT32_MAX;
+static uint32_t currentPageRead = UINT32_MAX;
 static uint32_t timeoutAt;
 
 class w25n01g_t4 

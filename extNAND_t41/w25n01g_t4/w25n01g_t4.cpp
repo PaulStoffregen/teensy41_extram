@@ -33,7 +33,7 @@ void w25n01g_t4::configure_flash()
 
   FLEXSPI2_FLSHA2CR0 = 134218;          //Flash Size in KByte, 1F400
   FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
-                       | FLEXSPI_FLSHCR1_CAS(11)
+  //                     | FLEXSPI_FLSHCR1_CAS(11)
                        | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
                        | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
 
@@ -315,8 +315,10 @@ void w25n01g_t4::eraseSector(uint32_t address)
   waitForReady();
 
   // cmd index 12
-  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, BLOCK_ERASE) | LUT1(DUMMY_SDR, PINS1, 8);
-  FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x20);
+  //FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, BLOCK_ERASE) | LUT1(DUMMY_SDR, PINS1, 8);
+  //FLEXSPI2_LUT49 = LUT1(ADDR_SDR, PINS1, 0x20);
+  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, BLOCK_ERASE) | LUT1(ADDR_SDR, PINS1, 0x18);
+
   flexspi_ip_command(12, flashBaseAddr + LINEAR_TO_PAGE(address));
 
   uint8_t status = readStatusRegister(STAT_REG, false );
@@ -483,8 +485,10 @@ int w25n01g_t4::readSector(uint32_t address, uint8_t *data, int length)
 
     currentPage = UINT32_MAX;
 
-    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
-    FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+    //FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+    //FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+    FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(ADDR_SDR, PINS1, 0x18);
+
     flexspi_ip_command(12, flashBaseAddr + targetPage);
     //Serial.println("Write Page Addr Complete");
 
@@ -601,8 +605,11 @@ void w25n01g_t4::read(uint32_t address, uint8_t *data, int length)
   //FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x18);
   FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(ADDR_SDR, PINS1, 0x18);
 
-  flexspi_ip_command(12, flashBaseAddr + targetPage);
-  //Serial.println("Write Page Addr Complete");
+  if(currentPageRead != targetPage){
+    flexspi_ip_command(12, flashBaseAddr + targetPage);
+    //Serial.println("Write Page Addr Complete");
+    currentPageRead = targetPage;
+  }
 
   setTimeout(TIMEOUT_PAGE_READ_MS);
 
@@ -648,8 +655,10 @@ void w25n01g_t4::readECC(uint32_t address, uint8_t *data, int length)
   uint32_t targetPage = LINEAR_TO_PAGEECC(address) ;
   waitForReady();
 
-  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
-  FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+  //FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(DUMMY_SDR, PINS1, 8);
+  //FLEXSPI2_LUT49 = LUT0(ADDR_SDR, PINS1, 0x20);
+  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, PAGE_DATA_READ) | LUT1(ADDR_SDR, PINS1, 0x18);
+
   flexspi_ip_command(12, flashBaseAddr + targetPage);
   //Serial.println("Write Page Addr Complete");
 

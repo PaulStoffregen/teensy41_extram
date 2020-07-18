@@ -28,6 +28,9 @@ void setup() {
 
   myNAND.begin();
 
+  //Lets try an erase
+  //myNAND.eraseSector(0);  //Erase chip
+
   //check42(false);
   Serial.println("Reading Data");
   memset(buffer, 0, 2048);
@@ -39,17 +42,13 @@ void setup() {
 
   Serial.println();
  
-  //Lets try an erase
-  //myNAND.deviceErase();  //Erase chip
-
   memset(buffer, 0, 2048);
   for (uint16_t i = 0; i < 2048; i++) buffer[i] = i;
   myNAND.writeBytes(0, buffer, 16);
-
-
+    
   //Serial.println("Reading Data");
   memset(buffer, 0, 2048);
-  myNAND.readBytes(4096, buffer, 16);
+  myNAND.readBytes(0, buffer, 16);
 
   for (uint16_t i = 0; i < 16; i++) {
     Serial.printf("0x%02x, ", buffer[i]);
@@ -85,7 +84,6 @@ void check42( bool doWrite ) {
 
   uint32_t test = sizeofNAND / flashBufferSize ;
 
-  byte value;
   uint32_t ii;
   uint32_t jj = 0, kk = 0;
   if ( doWrite) {
