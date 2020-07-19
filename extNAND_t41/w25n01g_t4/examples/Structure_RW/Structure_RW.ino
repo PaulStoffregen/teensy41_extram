@@ -105,13 +105,15 @@ void setup() {
 	Serial.println("...... ...... ......");
 
   	memset(buffer, 0xFF, 2048);
-	for(uint16_t i = 0; i < 10; i++) {
+	for(uint16_t i = 0; i < (512/arraySize); i++) {  //set up a 512-byte sub-page, 
 		for(uint16_t j = 0; j < arraySize; j++) {
 			buffer[j + i*arraySize]= mydata.I2CPacket[j];
 		}
 	}
-	myNAND.randomProgramDataLoad(writeaddress, buffer, 2048);
-	myNAND.programExecute(writeaddress);
+	for(uint8_t j = 0; j < 4; j++) {
+		myNAND.randomProgramDataLoad(writeaddress+j*512, buffer, 2048);
+		myNAND.programExecute(writeaddress*j*512);
+	}
 
     Serial.println("Write Done - array loaded in FRAM chip");
 	Serial.println("...... ...... ......");
