@@ -121,14 +121,24 @@ int8_t spiffs_t4::begin( ) {
 	  Serial.printf("at 0x %x\n", flashBaseAddr[_spiffs_region]);
 	#endif
 
-	  if(flashID[0] != 0xEF || flashID[1] != 0x40) {
+	  if(flashID[0] != 0xEF && (flashID[1] != 0x40 || flashID[1] != 0x70)) {
 		  Serial.println("No FLASH INSTALLED!!!!");
 		  exit(1);
 	  }
-	
-	  printStatusRegs();
 	  //TODO!!!!! set QPI enable bit in status reg #2 if not factory set!!!!!
+	  if( flashID[1] == 0x70){
+		uint8_t val[0];
+		flexspi_ip_read(9, flashBaseAddr[_spiffs_region], &val, 1 );	
 
+		val[0] |= 1<<1;
+
+		FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x50);
+		flexspi_ip_command(7, flashBaseAddr[_spiffs_region]);
+
+		  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x31) | LUT1(WRITE_SDR, PINS1, 1);
+		  flexspi_ip_write(7, flashBaseAddr[_spiffs_region], val, 1);
+	  }
+	  
 	  //  Serial.println("ENTER QPI MODE");
 	  flexspi_ip_command(15, flashBaseAddr[_spiffs_region]);
 
@@ -137,8 +147,10 @@ int8_t spiffs_t4::begin( ) {
 	  FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS4, 0x05) | LUT1(READ_SDR, PINS4, 1);
 	  // cmd index 9 = read Status register #2
 	  FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS4, 0x35) | LUT1(READ_SDR, PINS4, 1);
-
+	  
 	  flexspi_ip_command(14, flashBaseAddr[_spiffs_region]);
+	  spiffs_t4::printStatusRegs();
+
 	  result = 0;
 	}
 	
@@ -161,14 +173,16 @@ void spiffs_t4::printStatusRegs() {
 
   flexspi_ip_read(8, flashBaseAddr[_spiffs_region], &val, 1 );
   Serial.print("Status 1:");
-  Serial.printf(" %02X", val);
-  Serial.printf("\n");
+  //Serial.printf(" %02X", val);
+  //Serial.printf("\n");
+  Serial.println(val, BIN);
 
   // cmd index 9 = read Status register #2 SPI
   flexspi_ip_read(9, flashBaseAddr[_spiffs_region], &val, 1 );
   Serial.print("Status 2:");
-  Serial.printf(" %02X", val);
-  Serial.printf("\n");
+  //Serial.printf(" %02X", val);
+  //Serial.printf("\n");
+  Serial.println(val, BIN);
 #endif
 }
 
@@ -470,14 +484,14 @@ bool spiffs_t4::waitFlash(uint32_t timeout) {
 	} else {
 		flexspi_ip_read(5, flashBaseAddr[_spiffs_region], &val, 1 );
 	}
-    if (timeout && (millis() - t > timeout)) return 1;
+    if (timeout && (millis() - t > timeout)) {
+	return 1; }
   } while  ((val & 0x01) == 1);
   return 0;
 }
 
 void spiffs_t4::eraseFlashChip() {
   flexspi_ip_command(11, flashBaseAddr[_spiffs_region]);
-
   Serial.println("Erasing... (may take some time)");
   uint32_t t = millis();
   FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS4, 0x60); //Chip erase

@@ -79,7 +79,7 @@ class spiffs_t4 : public Print
 	//int8_t  begin(uint8_t config, uint8_t spiffs_region = 0);
 	int8_t  begin();
 	
-	void printStatusRegs();
+	static void printStatusRegs();
 	
 	void fs_mount();
 	void fs_unmount();
