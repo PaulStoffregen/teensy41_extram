@@ -51,8 +51,14 @@ void setup() {
     }
   }
   if ( chIn == 'y' ) {
-    eRAM.begin();
-    eRAM.eraseFlashChip();
+    int8_t result = eRAM.begin();
+	if(result == 0) {
+		eRAM.eraseFlashChip();
+	} else if(result == 1){
+		eRAM.eraseDevice();
+	} else {
+		Serial.println("ERROR!!!!");
+	}
   }
 
 
@@ -109,8 +115,8 @@ void loop() {
 }
 
 void loopTest2() {
-  int szLen;
-  char xData[12048], xData1[12048], xData2[26];
+  //int szLen;
+  char xData[12048], xData1[12048];
 
   char fname1[32] = "loopTest2";
   //spiffs_file fd1 = SPIFFS_open(&fs, fname1, SPIFFS_CREAT | SPIFFS_TRUNC | SPIFFS_RDWR, 0);
@@ -158,7 +164,7 @@ void loopTest() {
   char fName[52];
   char xData[12048];
   static char fIdx = 'A';
-  sprintf(erName, "%s%c", "F_" ,__TIME__, fIdx++);
+  sprintf(erName, "F_%s%c",__TIME__, fIdx++);
   snprintf(fName, 52, "F_%s%c", __TIME__, fIdx++);
   
   if ( fIdx > 'Z' ) fIdx = 'A';
