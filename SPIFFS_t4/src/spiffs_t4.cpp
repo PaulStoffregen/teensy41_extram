@@ -120,13 +120,15 @@ int8_t spiffs_t4::begin( ) {
 	  Serial.printf("\n");
 	  Serial.printf("at 0x %x\n", flashBaseAddr[_spiffs_region]);
 	#endif
+	
+	
 
 	  if(flashID[0] != 0xEF && (flashID[1] != 0x40 || flashID[1] != 0x70)) {
 		  Serial.println("No FLASH INSTALLED!!!!");
 		  exit(1);
 	  }
 	  //TODO!!!!! set QPI enable bit in status reg #2 if not factory set!!!!!
-	  if( flashID[1] == 0x70){
+	  //if( flashID[1] == 0x70){
 		uint8_t val[0];
 		flexspi_ip_read(9, flashBaseAddr[_spiffs_region], &val, 1 );	
 
@@ -137,7 +139,7 @@ int8_t spiffs_t4::begin( ) {
 
 		  FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS1, 0x31) | LUT1(WRITE_SDR, PINS1, 1);
 		  flexspi_ip_write(7, flashBaseAddr[_spiffs_region], val, 1);
-	  }
+	  //}
 	  
 	  //  Serial.println("ENTER QPI MODE");
 	  flexspi_ip_command(15, flashBaseAddr[_spiffs_region]);
