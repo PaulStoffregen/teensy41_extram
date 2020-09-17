@@ -158,7 +158,42 @@ int8_t spiffs_t4::begin( ) {
 	
 	  printStatusRegs();
 	  
-	  //Reset clock to 132 Mhz
+	  /* Table of clock settings reference only:
+		SEL: 0  DIV: 7 = 49.50000 MHz ok
+		SEL: 0  DIV: 6 = 56.57143 MHz ok
+		SEL: 0  DIV: 5 = 66.00000 MHz ok
+		SEL: 0  DIV: 4 = 79.20000 MHz ok
+		SEL: 0  DIV: 3 = 99.00000 MHz ok
+		SEL: 0  DIV: 2 = 132.00000 MHz
+		SEL: 0  DIV: 1 = 198.00000 MHz
+		SEL: 0  DIV: 0 = 396.00000 MHz
+		SEL: 1  DIV: 7 = 90.00000 MHz ok
+		SEL: 1  DIV: 6 = 102.85714 MHz ok
+		SEL: 1  DIV: 5 = 120.00000 MHz
+		SEL: 1  DIV: 4 = 144.00000 MHz
+		SEL: 1  DIV: 3 = 180.00000 MHz
+		SEL: 1  DIV: 2 = 240.00000 MHz
+		SEL: 1  DIV: 1 = 360.00000 MHz
+		SEL: 1  DIV: 0 = 720.00000 MHz
+		SEL: 2  DIV: 7 = 83.07750 MHz ok
+		SEL: 2  DIV: 6 = 94.94572 MHz ok
+		SEL: 2  DIV: 5 = 110.77000 MHz ok
+		SEL: 2  DIV: 4 = 132.92400 MHz
+		SEL: 2  DIV: 3 = 166.15500 MHz
+		SEL: 2  DIV: 2 = 221.53999 MHz
+		SEL: 2  DIV: 1 = 332.31000 MHz
+		SEL: 2  DIV: 0 = 664.62000 MHz
+		SEL: 3  DIV: 7 = 66.00000 MHz ok
+		SEL: 3  DIV: 6 = 75.42857 MHz ok
+		SEL: 3  DIV: 5 = 88.00000 MHz ok
+		SEL: 3  DIV: 4 = 105.60000 MHz ok
+		SEL: 3  DIV: 3 = 132.00000 MHz
+		SEL: 3  DIV: 2 = 176.00000 MHz
+		SEL: 3  DIV: 1 = 264.00000 MHz
+		SEL: 3  DIV: 0 = 528.00000 MHz
+	  */
+	  
+	  //Reset clock to 132.9 Mhz
 	  // turn on clock  (TODO: increase clock speed later, slow & cautious for first release)
 	  CCM_CCGR7 |= CCM_CCGR7_FLEXSPI2(CCM_CCGR_OFF);
 	  CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK))
