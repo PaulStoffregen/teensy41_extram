@@ -1,3 +1,24 @@
+# Obsolete - DO NOT USE
+
+This repository has the initial experiments to support PSRAM and QSPI flash memory
+before Teensy 4.1 was released.  It is now considered obsolete.
+
+PSRAM chips added to Teensy 4.1 are now officially supported by the Teensy core
+library.  They are automatically detected at startup.  Simply create variables
+with EXTMEM or call extmem_malloc() to use PSRAM.
+
+https://www.pjrc.com/store/psram.html
+
+Flash memory added to Teensy 4.1 is supported by the LittleFS library, which come
+installed with Teensyduino.
+
+https://github.com/PaulStoffregen/LittleFS
+
+The LittleFS library offers several classes for different memory types.  Use
+LittleFS_QSPIFlash to access a NOR flash chip, or LittleFS_QPINAND to access NAND
+flash, or LittleFS_QSPI for either (automatically detected).
+
+
 # teensy41_extram
 
 **WARNING: Both the SPIFFS_t4 and the extRAM_SPIFFS_t4 libraries need to be installed into your libraries folder to use the external PSRAM or FLASH!**
