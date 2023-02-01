@@ -5,11 +5,11 @@ before Teensy 4.1 was released.  It is now considered obsolete.
 
 PSRAM chips added to Teensy 4.1 are now officially supported by the Teensy core
 library.  They are automatically detected at startup.  Simply create variables
-with EXTMEM or call extmem_malloc() to use PSRAM.
+with EXTMEM or call extmem_malloc() to use PSRAM.  No additional library is needed.
 
 https://www.pjrc.com/store/psram.html
 
-Flash memory added to Teensy 4.1 is supported by the LittleFS library, which come
+Flash memory added to Teensy 4.1 is supported by the LittleFS library, which comes
 installed with Teensyduino.
 
 https://github.com/PaulStoffregen/LittleFS
